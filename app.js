@@ -1317,10 +1317,6 @@ window.addEventListener('keydown', e=>{
   else if(isCmd && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))){ e.preventDefault(); redo(); }
 });
 
-// initial sample content (single light + lens)
-scene.items.push(Object.assign(makeItem('light'),{x:150,y:180,direction:0,spread:12,beams:18,even:true,color:'#ff0000'}));
-scene.items.push(Object.assign(makeItem('lens'),{x:480,y:220,angle:0,focal:200,diam:120,model:'thin'}));
-
 // load autosaved scene if exists
 try{
   const saved = localStorage.getItem('optics-sandbox-scene');
