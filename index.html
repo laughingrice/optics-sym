@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Optics Sandbox — Serverless Ray Optics</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Optics Sandbox ⚪️🔭</h1>
+  </header>
+  <div id="app-status" style="position:fixed;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;background:#111;color:#fff;z-index:999;font-size:12px;box-shadow:0 6px 20px rgba(2,6,23,0.2)">Initializing…</div>
+  <div id="app-error" style="display:none;position:fixed;left:12px;bottom:12px;padding:12px;border-radius:8px;background:#ffecec;color:#800;z-index:999;max-width:480px;box-shadow:0 6px 20px rgba(2,6,23,0.08);font-size:13px"></div>
+  <div id="diag-popup" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:12px;border:1px solid #eee;z-index:1001;max-width:520px;max-height:60vh;overflow:auto;box-shadow:0 10px 40px rgba(2,6,23,0.08);font-size:13px"></div>
+  <div id="interaction-hint" style="display:none;position:fixed;pointer-events:none;padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.85);color:#fff;z-index:1000;font-size:13px;transform:translate(-50%,-150%);"></div>
+  <main>
+    <aside id="palette">
+      <h2>Components</h2>
+      <button id="add-light">+ Light Source</button>
+      <button id="add-lens">+ Lens</button>
+      <button id="add-mirror">+ Mirror</button>
+      <button id="add-splitter">+ Beam Splitter</button>
+      <button id="add-aperture">+ Aperture</button>
+      <hr />
+      <button id="clear-scene">Clear Scene</button>
+      <button id="export-png">Export PNG</button>
+      <button id="export-json">Export JSON</button>
+      <input type="file" id="import-json-file" accept=".json" style="display:none" />
+      <button id="import-json">Import JSON</button>
+      <hr />
+      <button id="undo-btn">Undo</button>
+      <button id="redo-btn">Redo</button>
+      <p class="tip">Select an object to edit properties.</p>
+    </aside>
+
+    <section id="viewport">
+      <canvas id="scene" width="1200" height="700"></canvas>
+    </section>
+
+    <aside id="properties">
+      <h2>Properties</h2>
+      <div id="no-selection">No object selected</div>
+      <div id="props" style="display:none">
+        <div><strong id="props-type"></strong></div>
+
+        <div id="angle-props" class="prop-group">
+          <label>Rotation (deg): <input id="prop-angle-rot" type="range" min="0" max="360" value="0" /><input id="prop-angle-num" type="number" min="0" max="360" value="0" style="width:68px;float:right" /></label>
+        </div>
+
+        <div id="light-props" class="prop-group">
+          <label>Beams: <input id="prop-beams" type="range" min="1" max="200" value="15" /><span id="val-beams">15</span></label>
+          <label>Direction: <input id="prop-direction" type="range" min="0" max="360" value="0" /><span id="val-direction">0°</span></label>
+          <label>Angle spread: <input id="prop-angle" type="range" min="0" max="180" value="10" /><span id="val-angle">10°</span></label>
+          <label>Even distribution: <input id="prop-even" type="checkbox" checked /></label>
+          <label>Visibility: <input id="prop-show-rays" type="checkbox" checked style="margin-left:8px" /></label>
+          <label>Color: <input id="prop-color" type="color" value="#ffd700" style="margin-left:8px" /> <span id="val-color" style="margin-left:6px"></span></label>
+        </div>
+
+        <div id="lens-props" class="prop-group">
+          <label>Model: <select id="prop-lens-model"><option value="thin">Thin</option><option value="thick">Thick (spherical)</option></select></label>
+          <div id="lens-thin-group">
+            <label>Focal length (px): <input id="prop-focal" type="range" min="-800" max="800" value="200" /><span id="val-focal">200</span></label>
+          </div>
+          <div id="lens-thick-group" style="display:none">
+            <label>n (refractive index): <input id="prop-lens-n" type="range" min="1.1" max="2.5" step="0.01" value="1.5" /><span id="val-lens-n">1.5</span></label>
+            <label>R1 (px): <input id="prop-lens-r1" type="number" value="160" /><span id="val-lens-r1"></span></label>
+            <label>R2 (px): <input id="prop-lens-r2" type="number" value="160" /><span id="val-lens-r2"></span></label>
+            <label>Thickness (px): <input id="prop-lens-thick" type="number" value="20" /><span id="val-lens-thick"></span></label>
+          </div>
+          <label>Diameter (px): <input id="prop-diam" type="range" min="20" max="400" value="120" /><span id="val-diam">120</span></label>
+        </div>
+
+        <div id="mirror-props" class="prop-group">
+          <label>Length (px): <input id="prop-length" type="range" min="20" max="1000" value="240" /><span id="val-length">240</span></label>
+        </div>
+
+        <div id="splitter-props" class="prop-group">
+          <label>Reflectance: <input id="prop-reflect" type="range" min="0" max="1" step="0.01" value="0.5" /><span id="val-reflect">0.5</span></label>
+          <label>Length (px): <input id="prop-length-2" type="range" min="20" max="1000" value="240" /><span id="val-length-2">240</span></label>
+        </div>
+
+        <div id="aperture-props" class="prop-group" style="display:none">
+          <label>Opening length (px): <input id="prop-aperture" type="range" min="4" max="800" value="80" /><span id="val-aperture">80</span></label>
+          <label>Total length (px): <input id="prop-aperture-total" type="range" min="4" max="1000" value="120" /><span id="val-aperture-total">120</span></label>
+          <label>Opening center offset (px): <input id="prop-aperture-offset" type="range" min="-500" max="500" value="0" /><input id="prop-aperture-offset-num" type="number" min="-500" max="500" value="0" style="width:80px;margin-left:8px" /><span id="val-aperture-offset">0</span></label>
+        </div>
+
+        <div class="prop-actions">
+          <button id="delete-object">Delete</button>
+        </div>
+      </div>
+
+      <div id="history-panel" style="display:none;margin-top:12px">
+        <h3>History</h3>
+        <div id="history-list" style="max-height:260px;overflow:auto;border:1px solid #eee;padding:6px;border-radius:6px;background:#fafafa"></div>
+        <div style="margin-top:8px">
+          <button id="history-clear">Clear History</button>
+        </div>
+      </div>
+
+      <div id="settings-panel" style="margin-top:20px;background:#fff;border-radius:8px;padding:10px;border:1px solid #eee">
+        <h2>Scene Settings</h2>
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="show-rays" checked /> Show rays</label>
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="snap-angle" /> Snap angles to 15°</label>
+        <div id="lights-legend" style="margin-top:8px;margin-bottom:6px;font-size:13px"></div>
+        <label style="display:block;margin-bottom:6px">Max depth <input id="max-depth" type="number" value="6" min="1" max="15" style="width:80px;margin-left:8px"/></label>
+        <label style="display:block;margin-bottom:6px">Ray count/sample <input id="ray-samples" type="number" value="15" min="1" max="200" style="width:80px;margin-left:8px"/></label>
+        <hr />
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="snap-grid" /> Snap to grid</label>
+        <label style="display:block;margin-bottom:6px">Grid size <input id="grid-size" type="number" value="40" min="4" max="200" style="width:80px;margin-left:8px"/></label>
+        <label style="display:block;margin-bottom:6px">Zoom <input id="zoom-slider" type="range" min="0.2" max="3" step="0.05" value="0.9" style="width:120px;margin-left:8px"/></label>
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="autosave" checked /> Autosave</label>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button id="reset-view">Reset View</button>
+          <button id="toggle-history">Show History</button>
+        </div>
+      </div>  
+      <!-- Diagnostics & Tests moved here -->
+      <div id="tests-panel" style="margin-top:14px;background:#fff;border-radius:8px;padding:10px;border:1px solid #eee">
+        <h3>Diagnostics & Tests</h3>
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="diag-toggle" /> Diagnostics (show intersections & normals)</label>
+        <label style="display:block;margin-bottom:6px"><input type="checkbox" id="enable-thick-lens" /> Enable thick lens model (experimental)</label>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-direction:column">
+          <button id="load-test">Load Test Scene</button>
+          <button id="sym-test">Symmetry Test</button>
+        </div>
+      </div> 
+    </aside>
+  </main>
+
+  <footer>
+    <small>Static demo — open <code>index.html</code> or serve with <code>python -m http.server</code>.</small>
+  </footer>
+
+  <script>try{ document.getElementById('app-status').textContent = 'Script tag reached'; console.log('Index: script tag reached'); }catch(e){ console.warn('status element missing'); }</script>
+  <script src="app.js"></script>
+  <script>
+    try{
+      const st = document.getElementById('app-status');
+      if(window.__app_loaded === 'yes'){
+        if(st) st.textContent = 'App script executed';
+        console.log('app.js executed — readiness flag present');
+      } else {
+        if(st) st.textContent = 'app.js not executed';
+        const b = document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: app.js failed to execute (syntax error or blocked) — fetching file for details...'; }
+        console.warn('app.js did not run — __app_loaded=', window.__app_loaded);
+        // fetch the file and attempt to parse it to surface syntax errors
+        try{
+          fetch('app.js').then(r=>r.text()).then(code=>{
+            try{
+              // try to parse (without executing) to reveal syntax errors
+              new Function(code);
+              // parsed OK — likely blocked by CSP or other runtime issue
+              if(b) b.textContent = 'app.js fetched and parsed OK — script may be blocked by CSP or runtime error occurred before readiness flag was set. Check console for details.';
+            }catch(err){
+              // show syntax error and surrounding lines
+              const msg = err && err.message ? err.message : String(err);
+              console.error('app.js parse error', err);
+              let snippet = code.split('\n');
+              let lineNo = null;
+              const m = msg.match(/:(\d+):(\d+)/);
+              if(m){ lineNo = parseInt(m[1],10); }
+              const start = Math.max(0, (lineNo || 1) - 5);
+              const end = Math.min(snippet.length, (lineNo || 1) + 5);
+              const extract = snippet.slice(start, end).map((l,idx)=>`${start+idx+1}: ${l}`).join('\n');
+              if(b) b.textContent = 'app.js parse error: ' + msg + '\n\n' + extract;
+            }
+          }).catch(fe=>{ console.error('failed to fetch app.js', fe); if(b) b.textContent = 'Failed to fetch app.js: ' + (fe && fe.message ? fe.message : String(fe)); });
+        }catch(fe){ console.error('fetch parse attempt failed', fe); if(b) b.textContent = 'Diagnostics attempt failed: ' + (fe && fe.message ? fe.message : String(fe)); }
+      }
+    }catch(e){ console.error(e); }
+  </script>
+</body>
+</html>

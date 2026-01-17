@@ -1,0 +1,33 @@
+*{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+body,html{height:100%;margin:0}
+/* prevent layout shift when panels expand/collapse: keep scrollbar gutter stable */
+body{overflow-y:scroll; scrollbar-gutter: stable both-edges;}
+/* make left/right side panels scroll internally instead of growing page height */
+#palette,#properties{max-height:calc(100vh - 160px);overflow:auto}
+header{padding:12px 20px;background:#0f172a;color:#fff}
+header h1{margin:0;font-size:18px}
+main{display:grid;grid-template-columns:minmax(160px,220px) 1fr minmax(240px,320px);gap:12px;padding:12px;height:calc(100vh - 92px)}
+#palette,#properties{background:#fff;border-radius:8px;padding:12px;box-shadow:0 2px 10px rgba(2,6,23,0.08)}
+#viewport{position:relative;background:linear-gradient(180deg,#eef2ff 0%,#ffffff 100%);display:flex;align-items:center;justify-content:center;border-radius:8px;padding:8px;overflow:hidden}
+canvas{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+canvas{background:#fff;border:1px solid #ddd;border-radius:6px}
+#overlay{position:absolute;left:12px;top:12px}
+#controls{background:rgba(255,255,255,0.95);padding:8px;border-radius:6px;border:1px solid #e6e6e6}
+#history-list .hist-item{padding:6px;border-radius:4px;margin-bottom:6px;border:1px solid #eee;background:#fff;cursor:pointer}
+#history-list .hist-item:hover{background:#f7f9fc}
+#history-list .hist-item.active{border-color:#0b84ff;background:#ebf5ff}
+#app-error{white-space:pre-wrap}
+#app-status.error{background:#8b0000}
+#interaction-hint{box-shadow:0 4px 18px rgba(2,6,23,0.25)}
+button{display:block;width:100%;padding:8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;margin-bottom:6px}
+button:hover{background:#f1f5f9}
+.prop-group{margin-top:10px}
+.prop-group label{display:block;margin-bottom:8px}
+.prop-actions{margin-top:12px}
+.tip{font-size:12px;color:#6b7280}
+footer{padding:12px 20px;color:#374151}
+#no-selection{color:#6b7280}
+#props strong{font-size:14px}
+input[type=range]{width:100%}
+input[type=number]{width:72px}
+label span{float:right;font-weight:600}
