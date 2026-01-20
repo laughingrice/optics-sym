@@ -7,7 +7,12 @@ try{ window.__app_loaded = 'yes'; setStatus && setStatus('App starting'); consol
 let canvas = document.getElementById('scene');
 let ctx = null;
 if(!canvas){ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: canvas element not found'; } try{ setStatus('Error', true); }catch(e){} throw new Error('canvas element not found'); }
-try{ ctx = canvas.getContext('2d'); }catch(e){ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: failed to get canvas context: ' + e.message; } try{ setStatus('Error', true); }catch(err){} throw e; }
+try{ ctx = canvas.getContext('2d'); canvas.style.touchAction = 'none'; // ensure we can capture and prevent touch gestures
+    // fallback simple ontouch handlers (some environments only trigger these)
+    canvas.ontouchstart = (ev)=>{ try{ console.log('canvas.ontouchstart fallback', ev.touches ? ev.touches.length : 0); }catch(e){} };
+    canvas.ontouchmove = (ev)=>{ try{ console.log('canvas.ontouchmove fallback', ev.touches ? ev.touches.length : 0); }catch(e){} };
+    canvas.ontouchend = (ev)=>{ try{ console.log('canvas.ontouchend fallback', ev.touches ? ev.touches.length : 0); }catch(e){} };
+}catch(e){ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: failed to get canvas context: ' + e.message; } try{ setStatus('Error', true); }catch(err){} throw e; }
 let W = canvas.width; let H = canvas.height;
 
 // status helpers and global error handlers
@@ -31,6 +36,8 @@ function clearDiagnostics(){ diagHits.length = 0; }
 let rotating = null; // {item, startAngle, startMouseAngle}
 let draggingApertureHandle = null; // {item, which:'left'|'right', startLeft, startRight, changed}
 let rotatingChanged = false;
+let touchState = null; // {type:'single'|'pinch', ...}
+let lastTap = 0; // ms timestamp of last tap for double-tap detection
 window.addEventListener('keydown', e=>{ if(e.code === 'Space') { spaceDown = true; canvas.style.cursor = 'grab'; } });
 window.addEventListener('keyup', e=>{ if(e.code === 'Space') { spaceDown = false; canvas.style.cursor = 'default'; } });
 // Scene storage
@@ -573,6 +580,66 @@ canvas.addEventListener('dblclick', e=>{
   for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } showProperties(it); render(); saveState(); return }}
 });
 
+// Touch interactions: single-touch select/drag/rotate; double-tap rotates; two-finger pinch zoom & pan
+canvas.addEventListener('touchstart', e=>{
+  console.log('canvas touchstart', e.touches ? e.touches.length : 0);
+  if(!e.touches || e.touches.length === 0) return; e.preventDefault();
+  const now = Date.now();
+  if(e.touches.length === 1){ const t = e.touches[0]; const pos = getTouchPos(t);
+    // diagnostic popup priority (same as mouse)
+    if(diagnostics && diagHits && diagHits.length){ for(let i=diagHits.length-1;i>=0;i--){ const h=diagHits[i]; const dx = pos.x - h.x, dy = pos.y - h.y; const d = Math.hypot(dx,dy); if(d < 12/view.scale){ const popup = document.getElementById('diag-popup'); if(popup){ try{ popup.style.display='block'; popup.innerHTML = '<button id="diag-close" style="float:right">Close</button><pre style="white-space:pre-wrap;font-size:13px">'+ safeStringify(h, 2) + '</pre>'; const pc = document.getElementById('diag-close'); if(pc) pc.onclick = ()=>{ popup.style.display='none'; }; }catch(err){ console.error('diag popup error', err); popup.style.display='block'; popup.textContent = 'Diagnostic: ' + String(h); } } touchState = null; return; } } }
+    // handle double-tap -> emulate dblclick
+    if(now - lastTap < 350){ const pos2 = pos; for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos2)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } showProperties(it); render(); saveState(); lastTap = 0; touchState = {type:'tap'}; return; } } }
+    lastTap = now;
+    // rotation handle
+    if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); if(d < 14/view.scale){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; touchState = {type:'single', mode:'rotate'}; return; } }
+    // aperture endpoint handle detection
+    for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(it.type==='aperture'){
+      const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang);
+      const halfTotal = (it.size || 120)/2; const halfOpen = (it.aperture || 80)/2; const off = it.apertureOffset || 0;
+      let left = -halfOpen + off; let right = halfOpen + off; left = Math.max(left, -halfTotal); right = Math.min(right, halfTotal);
+      const lx = it.x + ux*left, ly = it.y + uy*left; const rx = it.x + ux*right, ry = it.y + uy*right;
+      const dl = Math.hypot(pos.x-lx, pos.y-ly); const dr = Math.hypot(pos.x-rx, pos.y-ry);
+      const thresh = 18;
+      if(dl < thresh || dr < thresh){ selected = it; draggingApertureHandle = { item: it, which: (dl < dr ? 'left' : 'right'), startLeft: left, startRight: right, changed: false }; try{ showProperties(selected); }catch(e){}; touchState = {type:'single', mode:'aperture'}; return; }
+    } }
+    // item hit tests (reverse order)
+    for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(hitTest(it,pos)){ try{ selected = it; dragging = it; dragOffset.x = pos.x - it.x; dragOffset.y = pos.y - it.y; draggingChanged = false; saveState(); try{ showProperties(selected); }catch(e){} render(); }catch(e){} touchState = {type:'single', mode:'drag'}; return; } }
+    // else start panning
+    selected=null; showProperties(null); render(); panning = true; panStart = {x: t.clientX, y: t.clientY, ox: view.offsetX, oy: view.offsetY}; touchState = {type:'single', mode:'pan'}; return; }
+  // multi-touch: pinch-zoom / two-finger pan
+  if(e.touches.length >= 2){ const t0 = e.touches[0], t1 = e.touches[1]; const center = touchMidpoint(t0,t1); const dist = touchDistance(t0,t1); const r = canvas.getBoundingClientRect(); const sx = (center.clientX - r.left)*(canvas.width/r.width); const sy = (center.clientY - r.top)*(canvas.height/r.height); const wx = (sx - view.offsetX)/view.scale; const wy = (sy - view.offsetY)/view.scale; touchState = { type:'pinch', startDist: dist, startScale: view.scale, centerClientX: center.clientX, centerClientY: center.clientY, centerWorld: {x:wx,y:wy}, lastCenterClientX:center.clientX, lastCenterClientY:center.clientY}; }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', e=>{
+  console.log('canvas touchmove', e.touches ? e.touches.length : 0);
+  if(!e.touches) return; e.preventDefault(); if(!touchState) return;
+  if(touchState.type === 'single'){
+    const t = e.touches[0]; const pos = getTouchPos(t);
+    if(touchState.mode === 'rotate' && rotating){ const angNow = Math.atan2(pos.y-rotating.item.y, pos.x-rotating.item.x); let delta = (angNow - rotating.startMouseAngle) * 180 / Math.PI; while(delta > 180) delta -= 360; while(delta < -180) delta += 360; rotating.item.angle = (rotating.startAngle + delta) % 360; if(rotating.item.angle < 0) rotating.item.angle += 360; if(settings.snapAngles){ rotating.item.angle = Math.round(rotating.item.angle / 15) * 15; } if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; } propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle; rotatingChanged = true; render(); return; }
+    if(touchState.mode === 'aperture' && draggingApertureHandle){ try{ const it = draggingApertureHandle.item; const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang); const dx = pos.x - it.x, dy = pos.y - it.y; let along = dx*ux + dy*uy; const halfTotal = (it.size||120)/2; along = Math.max(-halfTotal, Math.min(halfTotal, along)); let left = draggingApertureHandle.startLeft, right = draggingApertureHandle.startRight; if(draggingApertureHandle.which === 'left'){ left = Math.min(along, right - 4); } else { right = Math.max(along, left + 4); } if(left > right){ const tmp = left; left = right; right = tmp; draggingApertureHandle.which = (draggingApertureHandle.which === 'left') ? 'right' : 'left'; } const newAperture = Math.max(4, right - left); const newOffset = (left + right)/2; it.aperture = newAperture; it.apertureOffset = newOffset; if(selected && selected.id === it.id){ propAperture.value = it.aperture; valAperture.textContent = it.aperture; if(propApertureOffset){ propApertureOffset.value = it.apertureOffset; valApertureOffset.textContent = it.apertureOffset; if(propApertureOffsetNum) propApertureOffsetNum.value = it.apertureOffset; } } draggingApertureHandle.changed = true; render(); }catch(e){ console.error('aperture handle drag error', e); } return; }
+    if(touchState.mode === 'drag' && dragging){ const nx = pos.x - dragOffset.x, ny = pos.y - dragOffset.y; let nnx = nx, nny = ny; if(snapToGrid){ nnx = Math.round(nnx/gridSize)*gridSize; nny = Math.round(nny/gridSize)*gridSize; } dragging.x = nnx; dragging.y = nny; draggingChanged = true; render(); } else if(touchState.mode === 'pan' && panning){ const tcur = e.touches[0]; const dx = (tcur.clientX - panStart.x); const dy = (tcur.clientY - panStart.y); view.offsetX = panStart.ox + dx; view.offsetY = panStart.oy + dy; render(); }
+    return;
+  }
+  if(touchState.type === 'pinch' && e.touches.length >= 2){ const t0 = e.touches[0], t1 = e.touches[1]; const center = touchMidpoint(t0,t1); const dist = touchDistance(t0,t1); const r = canvas.getBoundingClientRect(); const sx = (center.clientX - r.left)*(canvas.width/r.width); const sy = (center.clientY - r.top)*(canvas.height/r.height); const wx = (sx - view.offsetX)/view.scale; const wy = (sy - view.offsetY)/view.scale; let newScale = touchState.startScale * (dist / Math.max(1, touchState.startDist)); newScale = Math.min(3, Math.max(0.2, newScale)); // clamp
+    // adjust offset to keep the multi-touch center anchored
+    view.scale = newScale; view.offsetX = sx - wx*view.scale; view.offsetY = sy - wy*view.scale;
+    // two-finger pan: center moved
+    const dx = center.clientX - touchState.lastCenterClientX; const dy = center.clientY - touchState.lastCenterClientY; view.offsetX += dx; view.offsetY += dy; touchState.lastCenterClientX = center.clientX; touchState.lastCenterClientY = center.clientY; render(); }
+}, {passive:false});
+
+canvas.addEventListener('touchend', e=>{
+  console.log('canvas touchend', e.touches ? e.touches.length : 0, 'changed', e.changedTouches ? e.changedTouches.length : 0);
+  e.preventDefault(); // ensure we finalize states
+  // if there are still touches, downgrade to single-touch state
+  if(e.touches && e.touches.length === 1){ // continue with single touch
+    touchState = {type:'single', mode:'pan'}; return; }
+  // no more touches — finalize
+  if(draggingChanged){ saveState(); }
+  if(rotating){ if(rotatingChanged) saveState('Rotate'); rotating=null; rotatingChanged=false; const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='none'; } }
+  if(draggingApertureHandle){ if(draggingApertureHandle.changed) saveState('Aperture handle'); draggingApertureHandle = null; }
+  dragging=null; draggingChanged=false; panning=false; panStart=null; touchState = null; });
+
 function getMouse(e){
   const r = canvas.getBoundingClientRect();
   const sx = (e.clientX - r.left)*(canvas.width/r.width);
@@ -583,6 +650,10 @@ function getMouse(e){
 
 function screenToWorld(sx, sy){ const r = canvas.getBoundingClientRect(); const cx = (sx - r.left)*(canvas.width/r.width); const cy = (sy - r.top)*(canvas.height/r.height); return {x: (cx - view.offsetX)/view.scale, y: (cy - view.offsetY)/view.scale }; }
 function worldToScreen(px, py){ const r = canvas.getBoundingClientRect(); const sx = px*view.scale + view.offsetX; const sy = py*view.scale + view.offsetY; return {x: sx*(r.width/canvas.width)+r.left, y: sy*(r.height/canvas.height)+r.top}; }
+
+function getTouchPos(t){ const r = canvas.getBoundingClientRect(); const sx = (t.clientX - r.left)*(canvas.width/r.width); const sy = (t.clientY - r.top)*(canvas.height/r.height); return {x: (sx - view.offsetX)/view.scale, y: (sy - view.offsetY)/view.scale, clientX: t.clientX, clientY: t.clientY}; }
+function touchMidpoint(t1,t2){ return {clientX: (t1.clientX+t2.clientX)/2, clientY: (t1.clientY+t2.clientY)/2}; }
+function touchDistance(t1,t2){ const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY; return Math.hypot(dx,dy); }
 function hitTest(it, pos){
   const dx = pos.x - it.x, dy = pos.y - it.y;
   if(it.type==='light') return Math.hypot(dx,dy) < 18;
