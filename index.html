@@ -19,6 +19,7 @@
       <button id="add-light">+ Light Source</button>
       <button id="add-lens">+ Lens</button>
       <button id="add-mirror">+ Mirror</button>
+      <button id="add-hypermirror">+ Hyperbolic Mirror</button>
       <button id="add-splitter">+ Beam Splitter</button>
       <button id="add-aperture">+ Aperture</button>
       <hr />
@@ -73,6 +74,12 @@
 
         <div id="mirror-props" class="prop-group">
           <label>Length (px): <input id="prop-length" type="range" min="20" max="1000" value="240" /><span id="val-length">240</span></label>
+        </div>
+
+        <div id="hypermirror-props" class="prop-group" style="display:none">
+          <label>Semi-axis a (px): <input id="prop-h-a" type="range" min="10" max="1000" value="80" /><span id="val-h-a">80</span></label>
+          <label>Semi-axis b (px): <input id="prop-h-b" type="range" min="4" max="800" value="40" /><span id="val-h-b">40</span></label>
+          <label>Visible length (px): <input id="prop-h-length" type="range" min="20" max="2000" value="240" /><span id="val-h-length">240</span></label>
         </div>
 
         <div id="splitter-props" class="prop-group">
