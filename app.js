@@ -34,8 +34,7 @@ function safeStringify(obj, space){ try{ const seen = new WeakSet(); return JSON
 
 function clearDiagnostics(){ diagHits.length = 0; }
 let rotating = null; // {item, startAngle, startMouseAngle}
-let draggingApertureHandle = null; // {item, which:'left'|'right', startLeft, startRight, changed}
-let rotatingChanged = false;
+let rotatingChanged = false; 
 let touchState = null; // {type:'single'|'pinch', ...}
 let lastTap = 0; // ms timestamp of last tap for double-tap detection
 window.addEventListener('keydown', e=>{ if(e.code === 'Space') { spaceDown = true; canvas.style.cursor = 'grab'; } });
@@ -202,13 +201,60 @@ try{
   addSplitterBtn.onclick=()=>{scene.items.push(makeItem('splitter')); saveState(); render();}
   const addApertureBtn = document.getElementById('add-aperture'); if(addApertureBtn) addApertureBtn.onclick = ()=>{ scene.items.push(makeItem('aperture')); saveState(); render(); }
   clearSceneBtn.onclick=()=>{scene.items.length=0; selected=null; saveState(); showProperties(null); render();}
-  exportPngBtn.onclick=()=>{const link=document.createElement('a');link.href=canvas.toDataURL('image/png');link.download='optics.png';link.click();}
 
-  exportJsonBtn.onclick = ()=>{
-    const payload = { items: cloneSceneItems(), view };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'optics-scene.json'; a.click(); URL.revokeObjectURL(url);
+  // helper: convert dataURL to Blob
+  function dataURLToBlob(dataURL){ const parts = dataURL.split(','); const meta = parts[0]; const base64 = parts[1]; const mime = (meta.match(/:(.*?);/)||[])[1] || 'application/octet-stream'; const byteChars = atob(base64); const byteNumbers = new Array(byteChars.length); for(let i=0;i<byteChars.length;i++) byteNumbers[i]=byteChars.charCodeAt(i); const u8 = new Uint8Array(byteNumbers); return new Blob([u8], {type: mime}); }
+  function blobToBase64(blob){ return new Promise((res, rej)=>{ const reader = new FileReader(); reader.onloadend = ()=>{ try{ const d = reader.result || ''; res(d.split(',')[1] || ''); }catch(e){ rej(e); } }; reader.onerror = rej; reader.readAsDataURL(blob); }); }
+
+  // save & share helper: uses Capacitor Filesystem+Share when available, falls back to Web Share API or open/download
+  async function saveAndShareFile(filename, mime, data){ try{
+      const plugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+      // If running inside Capacitor (native), prefer Filesystem + Share
+      if(plugins && plugins.Filesystem && plugins.Share){ let base64;
+        if(typeof data === 'string' && data.startsWith('data:')) base64 = data.split(',')[1];
+        else if(data instanceof Blob) base64 = await blobToBase64(data);
+        else base64 = data; // assume already base64
+        // write to cache directory
+        try{
+          const write = await plugins.Filesystem.writeFile({ path: filename, data: base64, directory: 'Cache' });
+          const fileUri = write.uri || write.uri; // some Capacitor versions return 'uri'
+          await plugins.Share.share({ title: filename, text: filename, url: fileUri });
+          try{ await plugins.Filesystem.deleteFile({ path: filename, directory: 'Cache' }); }catch(e){}
+          return true;
+        }catch(e){ console.warn('Capacitor Filesystem/Share failed', e); }
+      }
+      // Web Share API with files
+      if(navigator.canShare && data instanceof Blob){ const file = new File([data], filename, { type: mime }); if(navigator.canShare({ files: [file] })){ try{ await navigator.share({ files: [file], title: filename }); return true; }catch(e){ console.warn('navigator.share failed', e); } } }
+      // Fallback: open in new tab for data URLs or trigger download for Blob
+      if(typeof data === 'string' && data.startsWith('data:')){ const w = window.open(data, '_blank'); if(w){ w.focus(); return true; } return false; }
+      if(data instanceof Blob){ const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); return true; }
+      return false;
+    }catch(e){ console.error('saveAndShareFile error', e); return false; } }
+
+  exportPngBtn.onclick = async ()=>{
+    try{
+      const dataURL = canvas.toDataURL('image/png');
+      const blob = dataURLToBlob(dataURL);
+      const ok = await saveAndShareFile('optics.png','image/png', blob);
+      if(!ok){ // final fallback
+        const w = window.open(dataURL, '_blank'); if(!w) alert('Unable to open image — your browser blocked popups.');
+      }
+    }catch(e){ alert('Export PNG failed: ' + (e && e.message ? e.message : String(e))); console.error(e); }
+  }
+
+  // Export to Photos removed — use Export PNG (share)
+
+
+
+
+  exportJsonBtn.onclick = async ()=>{
+    try{
+      const payload = { items: cloneSceneItems(), view };
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonStr], {type:'application/json'});
+      const ok = await saveAndShareFile('optics-scene.json','application/json', blob);
+      if(!ok){ const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'optics-scene.json'; a.click(); URL.revokeObjectURL(url); }
+    }catch(e){ alert('Export JSON failed: ' + (e && e.message ? e.message : String(e))); console.error(e); }
   }
   importJsonBtn.onclick = ()=>{ importJsonFile.click(); }
   importJsonFile.onchange = (e)=>{
@@ -466,18 +512,12 @@ canvas.addEventListener('mousedown', e=>{
   // panning with middle (button 1) or spacebar + left click
   if(e.button === 1 || e.buttons === 4 || spaceDown){ panning = true; panStart = {x: e.clientX, y: e.clientY, ox: view.offsetX, oy: view.offsetY}; canvas.style.cursor='grabbing'; return }
   // rotation handle hit test (if selected)
-  if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); if(d < 10){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; return; } }
+  if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); // larger hit target for rotation handle
+    if(d < 16){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; // show angle hint for mouse too
+      try{ const screen = worldToScreen(hx, hy); const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.startAngle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; } }catch(e){}
+      return; } }
 
-  // aperture endpoint handle detection (allow dragging opening endpoints)
-  for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(it.type==='aperture'){
-    const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang);
-    const halfTotal = (it.size || 120)/2; const halfOpen = (it.aperture || 80)/2; const off = it.apertureOffset || 0;
-    let left = -halfOpen + off; let right = halfOpen + off; left = Math.max(left, -halfTotal); right = Math.min(right, halfTotal);
-    const lx = it.x + ux*left, ly = it.y + uy*left; const rx = it.x + ux*right, ry = it.y + uy*right;
-    const dl = Math.hypot(pos.x-lx, pos.y-ly); const dr = Math.hypot(pos.x-rx, pos.y-ry);
-    const thresh = 10;
-    if(dl < thresh || dr < thresh){ selected = it; draggingApertureHandle = { item: it, which: (dl < dr ? 'left' : 'right'), startLeft: left, startRight: right, changed: false }; try{ showProperties(selected); }catch(e){}; return; }
-  } }
+
 
   // check items (reverse order)
   for(let i=scene.items.length-1;i>=0;i--){
@@ -528,25 +568,7 @@ canvas.addEventListener('mousemove', e=>{
   }
 
   // dragging aperture endpoints
-  if(draggingApertureHandle){
-    try{
-      const it = draggingApertureHandle.item; const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang);
-      const dx = pos.x - it.x, dy = pos.y - it.y; let along = dx*ux + dy*uy; const halfTotal = (it.size||120)/2; along = Math.max(-halfTotal, Math.min(halfTotal, along));
-      let left = draggingApertureHandle.startLeft, right = draggingApertureHandle.startRight;
-      if(draggingApertureHandle.which === 'left'){
-        left = Math.min(along, right - 4);
-      } else {
-        right = Math.max(along, left + 4);
-      }
-      if(left > right){ const tmp = left; left = right; right = tmp; draggingApertureHandle.which = (draggingApertureHandle.which === 'left') ? 'right' : 'left'; }
-      const newAperture = Math.max(4, right - left);
-      const newOffset = (left + right)/2;
-      it.aperture = newAperture; it.apertureOffset = newOffset;
-      if(selected && selected.id === it.id){ propAperture.value = it.aperture; valAperture.textContent = it.aperture; if(propApertureOffset){ propApertureOffset.value = it.apertureOffset; valApertureOffset.textContent = it.apertureOffset; if(propApertureOffsetNum) propApertureOffsetNum.value = it.apertureOffset; } }
-      draggingApertureHandle.changed = true; render();
-    }catch(e){ console.error('aperture handle drag error', e); }
-    return;
-  }
+
   if(dragging){
     const pos2 = pos;
     let nx = pos2.x - dragOffset.x, ny = pos2.y - dragOffset.y;
@@ -556,7 +578,6 @@ canvas.addEventListener('mousemove', e=>{
 });
 canvas.addEventListener('mouseup', e=>{ if(draggingChanged){ saveState(); }
   if(rotating){ if(rotatingChanged) saveState('Rotate'); rotating=null; rotatingChanged=false; const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='none'; } }
-  if(draggingApertureHandle){ if(draggingApertureHandle.changed) saveState('Aperture handle'); draggingApertureHandle = null; }
   dragging=null; draggingChanged=false; panning=false; panStart=null; canvas.style.cursor='default'; });
 
 // wheel zoom
@@ -585,24 +606,12 @@ canvas.addEventListener('touchstart', e=>{
   console.log('canvas touchstart', e.touches ? e.touches.length : 0);
   if(!e.touches || e.touches.length === 0) return; e.preventDefault();
   const now = Date.now();
-  if(e.touches.length === 1){ const t = e.touches[0]; const pos = getTouchPos(t);
-    // diagnostic popup priority (same as mouse)
-    if(diagnostics && diagHits && diagHits.length){ for(let i=diagHits.length-1;i>=0;i--){ const h=diagHits[i]; const dx = pos.x - h.x, dy = pos.y - h.y; const d = Math.hypot(dx,dy); if(d < 12/view.scale){ const popup = document.getElementById('diag-popup'); if(popup){ try{ popup.style.display='block'; popup.innerHTML = '<button id="diag-close" style="float:right">Close</button><pre style="white-space:pre-wrap;font-size:13px">'+ safeStringify(h, 2) + '</pre>'; const pc = document.getElementById('diag-close'); if(pc) pc.onclick = ()=>{ popup.style.display='none'; }; }catch(err){ console.error('diag popup error', err); popup.style.display='block'; popup.textContent = 'Diagnostic: ' + String(h); } } touchState = null; return; } } }
-    // handle double-tap -> emulate dblclick
-    if(now - lastTap < 350){ const pos2 = pos; for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos2)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } showProperties(it); render(); saveState(); lastTap = 0; touchState = {type:'tap'}; return; } } }
-    lastTap = now;
-    // rotation handle
-    if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); if(d < 14/view.scale){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; touchState = {type:'single', mode:'rotate'}; return; } }
-    // aperture endpoint handle detection
-    for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(it.type==='aperture'){
-      const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang);
-      const halfTotal = (it.size || 120)/2; const halfOpen = (it.aperture || 80)/2; const off = it.apertureOffset || 0;
-      let left = -halfOpen + off; let right = halfOpen + off; left = Math.max(left, -halfTotal); right = Math.min(right, halfTotal);
-      const lx = it.x + ux*left, ly = it.y + uy*left; const rx = it.x + ux*right, ry = it.y + uy*right;
-      const dl = Math.hypot(pos.x-lx, pos.y-ly); const dr = Math.hypot(pos.x-rx, pos.y-ry);
-      const thresh = 18;
-      if(dl < thresh || dr < thresh){ selected = it; draggingApertureHandle = { item: it, which: (dl < dr ? 'left' : 'right'), startLeft: left, startRight: right, changed: false }; try{ showProperties(selected); }catch(e){}; touchState = {type:'single', mode:'aperture'}; return; }
-    } }
+    if(e.touches.length === 1){ const t = e.touches[0]; const pos = getTouchPos(t);
+    // rotation handle (larger touch target and show hint)
+    if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); const touchThresh = 28 / (view.scale || 1); if(d < touchThresh){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; touchState = {type:'single', mode:'rotate'}; // show angle hint
+        try{ const screen = worldToScreen(hx, hy); const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.startAngle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; } }catch(e){}
+        return; } }
+
     // item hit tests (reverse order)
     for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(hitTest(it,pos)){ try{ selected = it; dragging = it; dragOffset.x = pos.x - it.x; dragOffset.y = pos.y - it.y; draggingChanged = false; saveState(); try{ showProperties(selected); }catch(e){} render(); }catch(e){} touchState = {type:'single', mode:'drag'}; return; } }
     // else start panning
@@ -613,19 +622,72 @@ canvas.addEventListener('touchstart', e=>{
 
 canvas.addEventListener('touchmove', e=>{
   console.log('canvas touchmove', e.touches ? e.touches.length : 0);
-  if(!e.touches) return; e.preventDefault(); if(!touchState) return;
+  if(!e.touches) return;
+  e.preventDefault();
+  if(!touchState) return;
+
   if(touchState.type === 'single'){
-    const t = e.touches[0]; const pos = getTouchPos(t);
-    if(touchState.mode === 'rotate' && rotating){ const angNow = Math.atan2(pos.y-rotating.item.y, pos.x-rotating.item.x); let delta = (angNow - rotating.startMouseAngle) * 180 / Math.PI; while(delta > 180) delta -= 360; while(delta < -180) delta += 360; rotating.item.angle = (rotating.startAngle + delta) % 360; if(rotating.item.angle < 0) rotating.item.angle += 360; if(settings.snapAngles){ rotating.item.angle = Math.round(rotating.item.angle / 15) * 15; } if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; } propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle; rotatingChanged = true; render(); return; }
-    if(touchState.mode === 'aperture' && draggingApertureHandle){ try{ const it = draggingApertureHandle.item; const ang = deg2rad(it.angle); const ux = Math.cos(ang), uy = Math.sin(ang); const dx = pos.x - it.x, dy = pos.y - it.y; let along = dx*ux + dy*uy; const halfTotal = (it.size||120)/2; along = Math.max(-halfTotal, Math.min(halfTotal, along)); let left = draggingApertureHandle.startLeft, right = draggingApertureHandle.startRight; if(draggingApertureHandle.which === 'left'){ left = Math.min(along, right - 4); } else { right = Math.max(along, left + 4); } if(left > right){ const tmp = left; left = right; right = tmp; draggingApertureHandle.which = (draggingApertureHandle.which === 'left') ? 'right' : 'left'; } const newAperture = Math.max(4, right - left); const newOffset = (left + right)/2; it.aperture = newAperture; it.apertureOffset = newOffset; if(selected && selected.id === it.id){ propAperture.value = it.aperture; valAperture.textContent = it.aperture; if(propApertureOffset){ propApertureOffset.value = it.apertureOffset; valApertureOffset.textContent = it.apertureOffset; if(propApertureOffsetNum) propApertureOffsetNum.value = it.apertureOffset; } } draggingApertureHandle.changed = true; render(); }catch(e){ console.error('aperture handle drag error', e); } return; }
-    if(touchState.mode === 'drag' && dragging){ const nx = pos.x - dragOffset.x, ny = pos.y - dragOffset.y; let nnx = nx, nny = ny; if(snapToGrid){ nnx = Math.round(nnx/gridSize)*gridSize; nny = Math.round(nny/gridSize)*gridSize; } dragging.x = nnx; dragging.y = nny; draggingChanged = true; render(); } else if(touchState.mode === 'pan' && panning){ const tcur = e.touches[0]; const dx = (tcur.clientX - panStart.x); const dy = (tcur.clientY - panStart.y); view.offsetX = panStart.ox + dx; view.offsetY = panStart.oy + dy; render(); }
-    return;
+    const t = e.touches[0];
+    const pos = getTouchPos(t);
+
+    if(touchState.mode === 'rotate' && rotating){
+      const angNow = Math.atan2(pos.y - rotating.item.y, pos.x - rotating.item.x);
+      let delta = (angNow - rotating.startMouseAngle) * 180 / Math.PI;
+      while(delta > 180) delta -= 360; while(delta < -180) delta += 360;
+      rotating.item.angle = (rotating.startAngle + delta) % 360;
+      if(rotating.item.angle < 0) rotating.item.angle += 360;
+      if(settings.snapAngles) rotating.item.angle = Math.round(rotating.item.angle / 15) * 15;
+      if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
+      propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle;
+      rotatingChanged = true;
+      try{
+        const handleDist = 36;
+        const a = deg2rad(rotating.item.angle||0);
+        const hx = rotating.item.x + Math.cos(a)*handleDist, hy = rotating.item.y + Math.sin(a)*handleDist;
+        const screen = worldToScreen(hx, hy);
+        const hint = document.getElementById('interaction-hint');
+        if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.angle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; }
+      }catch(e){}
+      render();
+      return;
+    }
+
+    if(touchState.mode === 'drag' && dragging){
+      let nx = pos.x - dragOffset.x, ny = pos.y - dragOffset.y;
+      if(snapToGrid){ nx = Math.round(nx/gridSize)*gridSize; ny = Math.round(ny/gridSize)*gridSize; }
+      dragging.x = nx; dragging.y = ny; draggingChanged = true; render();
+      return;
+    }
+
+    if(touchState.mode === 'pan' && panning){
+      const tcur = e.touches[0];
+      const dx = (tcur.clientX - panStart.x);
+      const dy = (tcur.clientY - panStart.y);
+      view.offsetX = panStart.ox + dx; view.offsetY = panStart.oy + dy; render();
+      return;
+    }
   }
-  if(touchState.type === 'pinch' && e.touches.length >= 2){ const t0 = e.touches[0], t1 = e.touches[1]; const center = touchMidpoint(t0,t1); const dist = touchDistance(t0,t1); const r = canvas.getBoundingClientRect(); const sx = (center.clientX - r.left)*(canvas.width/r.width); const sy = (center.clientY - r.top)*(canvas.height/r.height); const wx = (sx - view.offsetX)/view.scale; const wy = (sy - view.offsetY)/view.scale; let newScale = touchState.startScale * (dist / Math.max(1, touchState.startDist)); newScale = Math.min(3, Math.max(0.2, newScale)); // clamp
-    // adjust offset to keep the multi-touch center anchored
-    view.scale = newScale; view.offsetX = sx - wx*view.scale; view.offsetY = sy - wy*view.scale;
-    // two-finger pan: center moved
-    const dx = center.clientX - touchState.lastCenterClientX; const dy = center.clientY - touchState.lastCenterClientY; view.offsetX += dx; view.offsetY += dy; touchState.lastCenterClientX = center.clientX; touchState.lastCenterClientY = center.clientY; render(); }
+
+  if(touchState.type === 'pinch' && e.touches.length >= 2){
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const center = touchMidpoint(t0,t1);
+    const dist = touchDistance(t0,t1);
+    const r = canvas.getBoundingClientRect();
+    const sx = (center.clientX - r.left)*(canvas.width/r.width);
+    const sy = (center.clientY - r.top)*(canvas.height/r.height);
+    const wx = (sx - view.offsetX)/view.scale;
+    const wy = (sy - view.offsetY)/view.scale;
+    let newScale = touchState.startScale * (dist / Math.max(1, touchState.startDist));
+    newScale = Math.min(3, Math.max(0.2, newScale));
+    view.scale = newScale;
+    view.offsetX = sx - wx*view.scale;
+    view.offsetY = sy - wy*view.scale;
+    const dx = center.clientX - touchState.lastCenterClientX;
+    const dy = center.clientY - touchState.lastCenterClientY;
+    view.offsetX += dx; view.offsetY += dy;
+    touchState.lastCenterClientX = center.clientX; touchState.lastCenterClientY = center.clientY;
+    render();
+  }
 }, {passive:false});
 
 canvas.addEventListener('touchend', e=>{
@@ -637,7 +699,6 @@ canvas.addEventListener('touchend', e=>{
   // no more touches — finalize
   if(draggingChanged){ saveState(); }
   if(rotating){ if(rotatingChanged) saveState('Rotate'); rotating=null; rotatingChanged=false; const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='none'; } }
-  if(draggingApertureHandle){ if(draggingApertureHandle.changed) saveState('Aperture handle'); draggingApertureHandle = null; }
   dragging=null; draggingChanged=false; panning=false; panStart=null; touchState = null; });
 
 function getMouse(e){
@@ -704,7 +765,30 @@ function render(){
     if(selected.type === 'aperture') handleAng += Math.PI/2; // point normal to the line so it indicates ray passage direction
     const hx = selected.x + Math.cos(handleAng)*handleDist, hy = selected.y + Math.sin(handleAng)*handleDist;
     ctx.beginPath(); ctx.moveTo(selected.x, selected.y); ctx.lineTo(hx, hy); ctx.stroke();
-    ctx.beginPath(); ctx.fillStyle='#ff6600'; ctx.arc(hx, hy, 6, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+    // larger rotation handle for easier touch grabbing
+    ctx.beginPath(); ctx.fillStyle='#ff6600'; ctx.arc(hx, hy, 10, 0, Math.PI*2); ctx.fill();
+    // visual arc while rotating: show swept angle sector
+    if(typeof rotating !== 'undefined' && rotating && rotating.item && rotating.item.id === selected.id){
+      try{
+        const startDeg = rotating.startAngle || 0;
+        const curDeg = (typeof rotating.item.angle === 'number') ? rotating.item.angle : startDeg;
+        let delta = curDeg - startDeg; while(delta > 180) delta -= 360; while(delta < -180) delta += 360;
+        const startRad = deg2rad(startDeg);
+        const endRad = deg2rad(startDeg + delta);
+        const arcR = 48; // world units
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,102,0,0.95)'; ctx.fillStyle = 'rgba(255,102,0,0.12)'; ctx.lineWidth = Math.max(1, 3/view.scale);
+        // draw filled sector
+        ctx.beginPath(); ctx.moveTo(selected.x, selected.y); ctx.arc(selected.x, selected.y, arcR, startRad, endRad, (delta < 0)); ctx.closePath(); ctx.fill();
+        // outline
+        ctx.beginPath(); ctx.arc(selected.x, selected.y, arcR, startRad, endRad, (delta < 0)); ctx.stroke();
+        // mid-angle label
+        const midRad = startRad + (endRad - startRad)/2; const tx = selected.x + Math.cos(midRad) * (arcR + 10/view.scale); const ty = selected.y + Math.sin(midRad) * (arcR + 10/view.scale);
+        ctx.fillStyle = 'rgba(255,102,0,0.95)'; ctx.font = (12/view.scale) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(Math.round(curDeg) + '°', tx, ty);
+        ctx.restore();
+      }catch(e){ console.warn('draw rotate arc failed', e); }
+    }
+    ctx.restore(); }
   ctx.restore();
   try{ renderLightsLegend(); }catch(e){}
 }
