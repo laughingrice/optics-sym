@@ -12,9 +12,15 @@ while read -r f; do
   done
 done <<< "$STAGED"
 if [ ${#warn_files[@]} -gt 0 ]; then
-  echo "\n⚠️  Warning: You have generated files staged for commit:";
+  echo "\n⚠️  Error: Generated files staged for commit:";
   for wf in "${warn_files[@]}"; do echo "  - $wf"; done
-  echo "\nIt's recommended to keep generated files out of git. If you intend to commit them, ignore this warning.";
-  echo "To unstage these files: git reset HEAD -- <file>\n";
+  echo "\nIt's recommended to keep generated files out of git. To unstage these files: git reset HEAD -- <file>\n";
+  # Allow override in exceptional cases by setting ALLOW_GENERATED=1 in the environment
+  if [ "${ALLOW_GENERATED}" = "1" ]; then
+    echo "ALLOW_GENERATED=1 detected — allowing commit despite generated files.";
+    exit 0;
+  fi
+  echo "Commit blocked. To bypass, run 'git commit --no-verify' or set ALLOW_GENERATED=1 for this invocation.";
+  exit 1;
 fi
 exit 0
