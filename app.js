@@ -175,6 +175,7 @@ function makeItem(type, x=W/2, y=H/2){
   if(type==='light') Object.assign(base,{beams:15, spread:10, direction:0, even:true, color:'#ff0000'});
   if(type==='lens') Object.assign(base,{focal:200, diam:120});
   if(type==='mirror') Object.assign(base,{length:240});
+  if(type==='hypermirror') Object.assign(base,{a:80, b:40, length:240});
   if(type==='splitter') Object.assign(base,{length:240, reflect:0.5});
   if(type==='aperture') Object.assign(base,{aperture:80, size:120, apertureOffset:0});
   if(type==='light') Object.assign(base,{showRays:true});
@@ -186,6 +187,7 @@ try{
   const addLightBtn = document.getElementById('add-light');
   const addLensBtn = document.getElementById('add-lens');
   const addMirrorBtn = document.getElementById('add-mirror');
+  const addHyperMirrorBtn = document.getElementById('add-hypermirror');
   const addSplitterBtn = document.getElementById('add-splitter');
   const clearSceneBtn = document.getElementById('clear-scene');
   const exportPngBtn = document.getElementById('export-png');
@@ -198,6 +200,7 @@ try{
   addLightBtn.onclick = ()=>{scene.items.push(makeItem('light')); saveState(); render();}
   addLensBtn.onclick  = ()=>{scene.items.push(makeItem('lens')); saveState(); render();}
   addMirrorBtn.onclick=()=>{scene.items.push(makeItem('mirror')); saveState(); render();}
+  addHyperMirrorBtn.onclick=()=>{scene.items.push(makeItem('hypermirror')); saveState(); render();}
   addSplitterBtn.onclick=()=>{scene.items.push(makeItem('splitter')); saveState(); render();}
   const addApertureBtn = document.getElementById('add-aperture'); if(addApertureBtn) addApertureBtn.onclick = ()=>{ scene.items.push(makeItem('aperture')); saveState(); render(); }
   clearSceneBtn.onclick=()=>{scene.items.length=0; selected=null; saveState(); showProperties(null); render();}
@@ -357,6 +360,14 @@ const propApertureOffset = document.getElementById('prop-aperture-offset');
 const valApertureOffset = document.getElementById('val-aperture-offset');
 const propApertureOffsetNum = document.getElementById('prop-aperture-offset-num');
 
+// Hyperbolic mirror props
+const propHA = document.getElementById('prop-h-a');
+const valHA = document.getElementById('val-h-a');
+const propHB = document.getElementById('prop-h-b');
+const valHB = document.getElementById('val-h-b');
+const propHLength = document.getElementById('prop-h-length');
+const valHLength = document.getElementById('val-h-length');
+
 // per-light visibility checkbox in properties
 const propShowRays = document.getElementById('prop-show-rays');
 
@@ -403,6 +414,12 @@ function showProperties(item){
   if(item.type==='mirror'){
     document.getElementById('mirror-props').style.display='block';
     propLength.value=item.length; valLength.textContent=item.length;
+  }
+  if(item.type==='hypermirror'){
+    document.getElementById('hypermirror-props').style.display='block';
+    propHA.value = item.a; valHA.textContent = item.a;
+    propHB.value = item.b; valHB.textContent = item.b;
+    propHLength.value = item.length; valHLength.textContent = item.length;
   }
   if(item.type==='splitter'){
     document.getElementById('splitter-props').style.display='block';
@@ -476,6 +493,11 @@ propLensThick.oninput = ()=>{ if(!selected || selected.type!=='lens') return; se
 // aperture handlers
 propAperture.oninput = ()=>{ if(!selected || selected.type!=='aperture') return; const v = Math.max(4, Math.min(+propAperture.value, selected.size || 1000)); selected.aperture = v; valAperture.textContent = selected.aperture; // ensure offset stays valid
   const halfTotal = (selected.size||120)/2; const halfOpen = selected.aperture/2; const minOff = -halfTotal + halfOpen; const maxOff = halfTotal - halfOpen; if(typeof selected.apertureOffset === 'undefined') selected.apertureOffset = 0; selected.apertureOffset = Math.max(minOff, Math.min(maxOff, selected.apertureOffset)); if(propApertureOffset){ propApertureOffset.value = selected.apertureOffset; valApertureOffset.textContent = selected.apertureOffset; } scheduleSaveState(); render(); }
+
+// hypermirror property handlers
+if(propHA) propHA.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.a = Math.max(4, +propHA.value); valHA.textContent = selected.a; scheduleSaveState(); render(); }
+if(propHB) propHB.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.b = Math.max(2, +propHB.value); valHB.textContent = selected.b; scheduleSaveState(); render(); }
+if(propHLength) propHLength.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.length = Math.max(4, +propHLength.value); valHLength.textContent = selected.length; scheduleSaveState(); render(); }
 propApertureTotal.oninput = ()=>{ if(!selected || selected.type!=='aperture') return; selected.size = +propApertureTotal.value; valApertureTotal.textContent = selected.size; // clamp aperture/offset to fit new total
   const halfTotal = (selected.size||120)/2; const halfOpen = (selected.aperture||4)/2; const minOff = -halfTotal + halfOpen; const maxOff = halfTotal - halfOpen; if(typeof selected.apertureOffset === 'undefined') selected.apertureOffset = 0; selected.apertureOffset = Math.max(minOff, Math.min(maxOff, selected.apertureOffset)); if(propApertureOffset){ propApertureOffset.value = selected.apertureOffset; valApertureOffset.textContent = selected.apertureOffset; } scheduleSaveState(); render(); }
 
@@ -728,6 +750,19 @@ function hitTest(it, pos){
     const py = -dx*uy + dy*ux; // perpendicular distance
     return (Math.abs(py) < 8 && px > -half-6 && px < half+6);
   }
+  if(it.type==='hypermirror'){
+    // distance to local hyperbola — compute local coords and expected Y
+    const ang = deg2rad(it.angle || 0); const cosA = Math.cos(ang), sinA = Math.sin(ang);
+    const lx = dx * cosA + dy * sinA; const ly = -dx * sinA + dy * cosA;
+    const absX = Math.abs(lx);
+    if(absX < it.a - 6) return false;
+    const maxX = it.a + Math.abs(it.length)/2 + 6;
+    if(absX > maxX) return false;
+    const val = (absX*absX)/(it.a*it.a) - 1;
+    if(val < 0) return false;
+    const expectY = it.b * Math.sqrt(val);
+    return (Math.abs(Math.abs(ly) - expectY) < 10); // hit threshold
+  }
   if(it.type==='aperture'){
     // orientable linear aperture element — hit if within total length segment
     const halfTotal = (it.size || 120)/2; const ang = deg2rad(it.angle);
@@ -757,6 +792,21 @@ function render(){
 
   // items
   for(const it of scene.items) drawItem(it);
+
+  // draw hyperbolic normals/sample when diagnostics enabled
+  if(diagnostics){
+    for(const it of scene.items){ if(it.type==='hypermirror'){
+      try{
+        ctx.save(); ctx.strokeStyle='rgba(20,160,20,0.65)'; ctx.lineWidth=1/view.scale;
+        const ang = deg2rad(it.angle||0); const cosA = Math.cos(ang), sinA = Math.sin(ang);
+        const xStart = it.a; const xEnd = it.a + Math.abs(it.length)/2; const steps = 18;
+        for(let i=0;i<=steps;i++){ const X = xStart + (xEnd-xStart)*(i/steps); const Y = it.b * Math.sqrt(Math.max(0, (X*X)/(it.a*it.a) - 1)); const p1 = {x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA}; const p2 = {x: it.x + X*cosA + Y*sinA, y: it.y + X*sinA - Y*cosA}; // normals
+          const nLocal1 = {x: 2*X/(it.a*it.a), y: -2*Y/(it.b*it.b)}; const nl1 = Math.hypot(nLocal1.x,nLocal1.y); if(nl1){ nLocal1.x/=nl1; nLocal1.y/=nl1; }
+          const nW1 = {x: nLocal1.x*cosA - nLocal1.y*sinA, y: nLocal1.x*sinA + nLocal1.y*cosA}; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p1.x + nW1.x*16, p1.y + nW1.y*16); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p2.x + nW1.x*16, p2.y + nW1.y*16); ctx.stroke(); }
+        ctx.restore();
+      }catch(e){ console.warn('hypermirror diag draw failed', e); }
+    }}
+  }
 
   // selection marker
   if(selected){ ctx.save(); ctx.strokeStyle='#ff6600'; ctx.lineWidth=2/view.scale; ctx.beginPath(); ctx.arc(selected.x, selected.y, 20,0,Math.PI*2); ctx.stroke();
@@ -1062,6 +1112,27 @@ function traceRay(start, dir, depth, out, intensity, diagCollector, baseColor){ 
     const eps = 0.01;
     const p2 = {x: hitPoint.x + newDir.x*eps, y: hitPoint.y + newDir.y*eps};
     traceRay(p2, newDir, depth-1, out, intensity, diagCollector, baseColor);
+  }
+  else if(nearest.type === 'hypermirror'){
+    // hyperbolic mirror — exact intersection found earlier in intersect routine
+    // convert hit point to local coords
+    const ang = deg2rad(nearest.angle || 0);
+    const cosA = Math.cos(ang), sinA = Math.sin(ang);
+    const dx = hitPoint.x - nearest.x, dy = hitPoint.y - nearest.y;
+    const lx = dx * cosA + dy * sinA;
+    const ly = -dx * sinA + dy * cosA;
+    // surface gradient of F = x^2/a^2 - y^2/b^2 - 1 => grad = (2x/a^2, -2y/b^2)
+    const nLocal = { x: 2*lx/(nearest.a*nearest.a), y: -2*ly/(nearest.b*nearest.b) };
+    const nlen = Math.hypot(nLocal.x, nLocal.y); if(nlen === 0){ return; } nLocal.x /= nlen; nLocal.y /= nlen;
+    // rotate normal back to world
+    let normal = { x: nLocal.x * cosA - nLocal.y * sinA, y: nLocal.x * sinA + nLocal.y * cosA };
+    // ensure normal faces against the incoming ray
+    if((dir.x*normal.x + dir.y*normal.y) > 0){ normal.x *= -1; normal.y *= -1; }
+    if(diagnostics){ (diagCollector || diagHits).push({x:hitPoint.x,y:hitPoint.y,normal, type:'hypermirror', action:'R'}); }
+    const ref = reflectVec(dir, normal);
+    const eps2 = 0.01;
+    const p2 = { x: hitPoint.x + ref.x * eps2, y: hitPoint.y + ref.y * eps2 };
+    traceRay(p2, ref, depth-1, out, intensity, diagCollector, baseColor);
   }
   else if(nearest.type==='aperture'){
     // aperture blocks rays outside its opening — stop here
@@ -1412,6 +1483,32 @@ function intersectSegmentWithRay(it, origin, dir){
     const u = (dx*r.y - dy*r.x)/denom;
     if(t>=0 && u>=0 && u<=1) return {t,u,pt:{x:origin.x+t*r.x,y:origin.y+t*r.y}};
     return null;
+  }
+  if(it.type==='hypermirror'){
+    // intersect ray with canonical hyperbola in item's local coords
+    const ang = deg2rad(it.angle || 0);
+    const cosA = Math.cos(ang), sinA = Math.sin(ang);
+    const ox = origin.x - it.x, oy = origin.y - it.y;
+    // rotate origin & dir into local frame
+    const lx0 = ox * cosA + oy * sinA; const ly0 = -ox * sinA + oy * cosA;
+    const ldx = dir.x * cosA + dir.y * sinA; const ldy = -dir.x * sinA + dir.y * cosA;
+    // solve (lx0 + ldx*t)^2 / a^2 - (ly0 + ldy*t)^2 / b^2 = 1  -> quadratic: A t^2 + B t + C = 0
+    const a2 = it.a * it.a, b2 = it.b * it.b;
+    const A = (ldx*ldx)/a2 - (ldy*ldy)/b2;
+    const B = 2*(lx0*ldx)/a2 - 2*(ly0*ldy)/b2;
+    const C = (lx0*lx0)/a2 - (ly0*ly0)/b2 - 1;
+    const eps = 1e-9;
+    let ts = [];
+    if(Math.abs(A) < eps){ // linear
+      if(Math.abs(B) > eps){ const t = -C / B; ts.push(t); }
+    } else {
+      const disc = B*B - 4*A*C;
+      if(disc >= 0){ const sdisc = Math.sqrt(disc); const t1 = (-B - sdisc)/(2*A); const t2 = (-B + sdisc)/(2*A); ts.push(t1); ts.push(t2); }
+    }
+    // find smallest positive t and check local X bounds (finite visible length)
+    let best = null; let bestT = Infinity;
+    for(const t of ts){ if(t <= 1e-6) continue; const X = lx0 + ldx*t; const Y = ly0 + ldy*t; const absX = Math.abs(X); if(absX < it.a - 1e-6) continue; const maxX = it.a + Math.abs(it.length)/2; if(absX > maxX + 1e-6) continue; if(t < bestT){ bestT = t; best = { t, pt: { x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA } } } }
+    return best;
   }
   if(it.type==='lens'){
     // treat lens as infinitesimally thin plane perpendicular to lens axis (for thin model)
