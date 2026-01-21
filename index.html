@@ -10,7 +10,6 @@
   <header>
     <h1>Optics Sandbox ⚪️🔭</h1>
   </header>
-  <div id="app-status" style="position:fixed;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;background:#111;color:#fff;z-index:999;font-size:12px;box-shadow:0 6px 20px rgba(2,6,23,0.2)">Initializing…</div>
   <div id="app-error" style="display:none;position:fixed;left:12px;bottom:12px;padding:12px;border-radius:8px;background:#ffecec;color:#800;z-index:999;max-width:480px;box-shadow:0 6px 20px rgba(2,6,23,0.08);font-size:13px"></div>
   <div id="diag-popup" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:12px;border:1px solid #eee;z-index:1001;max-width:520px;max-height:60vh;overflow:auto;box-shadow:0 10px 40px rgba(2,6,23,0.08);font-size:13px"></div>
   <div id="interaction-hint" style="display:none;position:fixed;pointer-events:none;padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.85);color:#fff;z-index:1000;font-size:13px;transform:translate(-50%,-150%);"></div>
@@ -25,6 +24,7 @@
       <hr />
       <button id="clear-scene">Clear Scene</button>
       <button id="export-png">Export PNG</button>
+
       <button id="export-json">Export JSON</button>
       <input type="file" id="import-json-file" accept=".json" style="display:none" />
       <button id="import-json">Import JSON</button>
@@ -129,45 +129,17 @@
     </aside>
   </main>
 
-  <footer>
-    <small>Static demo — open <code>index.html</code> or serve with <code>python -m http.server</code>.</small>
-  </footer>
-
-  <script>try{ document.getElementById('app-status').textContent = 'Script tag reached'; console.log('Index: script tag reached'); }catch(e){ console.warn('status element missing'); }</script>
   <script src="app.js"></script>
   <script>
     try{
-      const st = document.getElementById('app-status');
-      if(window.__app_loaded === 'yes'){
-        if(st) st.textContent = 'App script executed';
-        console.log('app.js executed — readiness flag present');
-      } else {
-        if(st) st.textContent = 'app.js not executed';
-        const b = document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: app.js failed to execute (syntax error or blocked) — fetching file for details...'; }
-        console.warn('app.js did not run — __app_loaded=', window.__app_loaded);
-        // fetch the file and attempt to parse it to surface syntax errors
+      if(window.__app_loaded !== 'yes'){
+        const b = document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: app.js failed to execute (syntax error or blocked) — check console for details.'; }
+        // attempt to fetch and parse app.js to surface syntax errors
         try{
           fetch('app.js').then(r=>r.text()).then(code=>{
-            try{
-              // try to parse (without executing) to reveal syntax errors
-              new Function(code);
-              // parsed OK — likely blocked by CSP or other runtime issue
-              if(b) b.textContent = 'app.js fetched and parsed OK — script may be blocked by CSP or runtime error occurred before readiness flag was set. Check console for details.';
-            }catch(err){
-              // show syntax error and surrounding lines
-              const msg = err && err.message ? err.message : String(err);
-              console.error('app.js parse error', err);
-              let snippet = code.split('\n');
-              let lineNo = null;
-              const m = msg.match(/:(\d+):(\d+)/);
-              if(m){ lineNo = parseInt(m[1],10); }
-              const start = Math.max(0, (lineNo || 1) - 5);
-              const end = Math.min(snippet.length, (lineNo || 1) + 5);
-              const extract = snippet.slice(start, end).map((l,idx)=>`${start+idx+1}: ${l}`).join('\n');
-              if(b) b.textContent = 'app.js parse error: ' + msg + '\n\n' + extract;
-            }
-          }).catch(fe=>{ console.error('failed to fetch app.js', fe); if(b) b.textContent = 'Failed to fetch app.js: ' + (fe && fe.message ? fe.message : String(fe)); });
-        }catch(fe){ console.error('fetch parse attempt failed', fe); if(b) b.textContent = 'Diagnostics attempt failed: ' + (fe && fe.message ? fe.message : String(fe)); }
+            try{ new Function(code); }catch(err){ const msg = err && err.message ? err.message : String(err); const lines = code.split('\n'); const m = msg.match(/:(\d+):(\d+)/); const lineNo = m ? parseInt(m[1],10) : 1; const start = Math.max(0, lineNo - 5); const end = Math.min(lines.length, lineNo + 5); const extract = lines.slice(start, end).map((l,idx)=>`${start+idx+1}: ${l}`).join('\n'); if(b) b.textContent = 'app.js parse error: ' + msg + '\n\n' + extract; }
+          }).catch(fe=>{ if(b) b.textContent = 'Failed to fetch app.js: ' + (fe && fe.message ? fe.message : String(fe)); });
+        }catch(fe){ if(b) b.textContent = 'Diagnostics attempt failed: ' + (fe && fe.message ? fe.message : String(fe)); }
       }
     }catch(e){ console.error(e); }
   </script>
