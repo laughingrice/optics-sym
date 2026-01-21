@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pre-commit hook: warn when generated files (icons, www, appiconset) are staged
+set -e
+STAGED=$(git diff --cached --name-only)
+if [ -z "$STAGED" ]; then exit 0; fi
+# patterns to warn about
+warn_patterns=("^assets/appicons/" "^www/" "^ios/App/App/Assets.xcassets/AppIcon.appiconset/" )
+warn_files=()
+while read -r f; do
+  for p in "${warn_patterns[@]}"; do
+    if [[ "$f" =~ $p ]]; then warn_files+=("$f"); fi
+  done
+done <<< "$STAGED"
+if [ ${#warn_files[@]} -gt 0 ]; then
+  echo "\n⚠️  Warning: You have generated files staged for commit:";
+  for wf in "${warn_files[@]}"; do echo "  - $wf"; done
+  echo "\nIt's recommended to keep generated files out of git. If you intend to commit them, ignore this warning.";
+  echo "To unstage these files: git reset HEAD -- <file>\n";
+fi
+exit 0

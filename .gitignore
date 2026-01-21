@@ -1,0 +1,33 @@
+# Node dependencies
+node_modules/
+npm-debug.log
+# lockfile should be committed for reproducibility
+# package-lock.json
+
+# Build outputs
+www/
+dist/
+
+# macOS
+.DS_Store
+
+# Env / secrets
+.env
+
+# Generated icons & assets (regenerated with tools/generate-icons.js)
+assets/appicons/
+ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png
+
+# Xcode / iOS
+ios/App/App/build/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcshareddata/
+ios/App/xcuserdata/
+*.xcuserstate
+
+# Editor configs
+.vscode/
+.idea/
+
+# Logs
+*.log
