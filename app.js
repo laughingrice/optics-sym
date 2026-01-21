@@ -1029,6 +1029,35 @@ function drawItem(it){
     ctx.save(); ctx.fillStyle='#0b84ff22'; ctx.fillRect(-halfTotal, -6, left + halfTotal, 12); ctx.fillRect(right, -6, halfTotal - right, 12); ctx.restore();
     if(diagnostics && selected && selected.id === it.id){ ctx.save(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font=(10/view.scale)+'px sans-serif'; ctx.fillText(`opening=${it.aperture}`, 10, -10); ctx.fillText(`total=${it.size}`, 10, 6); ctx.fillText(`offset=${it.apertureOffset || 0}`, 10, 18); ctx.restore(); }
   }
+
+  // hyperbolic mirror — draw visible branches
+  if(it.type === 'hypermirror'){
+    try{
+      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = 3*scaleFactor;
+      const halfLen = Math.abs(it.length)/2;
+      const steps = Math.max(16, Math.min(120, Math.round(halfLen/4)));
+      // positive X branch
+      ctx.beginPath();
+      for(let i=0;i<=steps;i++){
+        const t = i/steps; const X = it.a + halfLen * t; const tmp = (X*X)/(it.a*it.a) - 1; if(tmp < 0) continue; const Y = it.b * Math.sqrt(tmp);
+        if(i===0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+      }
+      ctx.stroke();
+      // negative X branch
+      ctx.beginPath();
+      for(let i=0;i<=steps;i++){
+        const t = i/steps; const X = -(it.a + halfLen * t); const tmp = (X*X)/(it.a*it.a) - 1; if(tmp < 0) continue; const Y = it.b * Math.sqrt(tmp);
+        if(i===0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+      }
+      ctx.stroke();
+      // small end caps
+      ctx.fillStyle = '#6b7280';
+      const capSize = Math.max(3, 5*scaleFactor);
+      ctx.beginPath(); ctx.arc(it.a + halfLen, it.b * Math.sqrt(Math.max(0, ((it.a+halfLen)*(it.a+halfLen))/(it.a*it.a) - 1)), capSize, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-(it.a + halfLen), it.b * Math.sqrt(Math.max(0, ((it.a+halfLen)*(it.a+halfLen))/(it.a*it.a) - 1)), capSize, 0, Math.PI*2); ctx.fill();
+    }catch(e){ console.warn('draw hypermirror failed', e); }
+  }
+
   ctx.restore();
 }
 
