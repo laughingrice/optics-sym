@@ -29,9 +29,8 @@ jobs:
         run: npm run build:ci
 
       - name: Upload Pages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v1
         with:
-          name: pages
           path: ./www
 
   deploy:
