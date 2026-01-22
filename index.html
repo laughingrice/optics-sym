@@ -152,8 +152,11 @@
   </main>
 
   <script>
-    // Content script / extension interference detector: shows a friendly banner if common extension signatures are found
+    // Extension interference detector — less intrusive + persistence
     (function(){
+      const DISMISS_KEY = 'optics-extension-warning-dismissed';
+      try{ if(localStorage.getItem(DISMISS_KEY) === '1') return; }catch(e){}
+
       function makeBanner(msg){
         try{
           let b = document.getElementById('extension-warning-banner');
@@ -161,27 +164,50 @@
             b = document.createElement('div');
             b.id = 'extension-warning-banner';
             b.style.position = 'fixed';
-            b.style.left = '12px'; b.style.top = '12px'; b.style.right = '12px';
-            b.style.zIndex = '99999'; b.style.background = '#fff9db'; b.style.color = '#332';
-            b.style.padding = '10px 12px'; b.style.border = '1px solid #f1d18a';
-            b.style.borderRadius = '8px'; b.style.fontSize = '13px'; b.style.boxShadow = '0 6px 20px rgba(2,6,23,0.04)';
-            b.style.display = 'flex'; b.style.gap = '12px'; b.style.alignItems = 'center';
-            const txt = document.createElement('div'); txt.id='extension-warning-text'; txt.style.flex='1'; b.appendChild(txt);
-            const close = document.createElement('button'); close.textContent = 'Dismiss'; close.style.marginLeft='8px'; close.onclick = ()=>{ b.remove(); }; b.appendChild(close);
+            b.style.right = '12px'; b.style.top = '12px';
+            b.style.zIndex = '99999';
+            b.style.background = '#fff8e1';
+            b.style.color = '#333';
+            b.style.padding = '8px 10px';
+            b.style.border = '1px solid #f1d18a';
+            b.style.borderRadius = '8px';
+            b.style.fontSize = '12px';
+            b.style.boxShadow = '0 6px 20px rgba(2,6,23,0.04)';
+            b.style.display = 'flex'; b.style.alignItems = 'center'; b.style.gap = '8px';
+
+            const txt = document.createElement('div');
+            txt.id = 'extension-warning-text';
+            txt.style.maxWidth = '340px'; txt.style.overflow = 'hidden'; txt.style.textOverflow = 'ellipsis'; txt.style.whiteSpace = 'nowrap';
+            b.appendChild(txt);
+
+            const btn = document.createElement('button');
+            btn.textContent = 'Dismiss'; btn.style.fontSize = '12px'; btn.onclick = ()=>{ b.remove(); };
+            b.appendChild(btn);
+
+            const dont = document.createElement('button');
+            dont.textContent = "Don't show again"; dont.style.fontSize = '12px'; dont.style.marginLeft = '6px';
+            dont.onclick = ()=>{ try{ localStorage.setItem(DISMISS_KEY, '1'); }catch(e){} b.remove(); };
+            b.appendChild(dont);
+
             document.body.appendChild(b);
+
+            // auto-hide after 10s (pause on hover)
+            let hideTimeout = setTimeout(()=>{ try{ b.style.transition='opacity 300ms'; b.style.opacity='0'; setTimeout(()=>b.remove(),350); }catch(e){} }, 10000);
+            b.addEventListener('mouseenter', ()=>{ clearTimeout(hideTimeout); b.style.opacity='1'; });
+            b.addEventListener('mouseleave', ()=>{ hideTimeout = setTimeout(()=>{ try{ b.style.transition='opacity 300ms'; b.style.opacity='0'; setTimeout(()=>b.remove(),350); }catch(e){} }, 8000); });
           }
           const txt = document.getElementById('extension-warning-text'); if(txt) txt.textContent = msg;
         }catch(e){ console.warn('makeBanner failed', e); }
       }
 
       function detect(){
-        const keywords = ['adblock','adblockplus','abp','ublock','uBlock','adguard','adsbygoogle','adsense','googlesyndication','ads'];
+        const keywords = ['adblock','adblockplus','abp','ublock','ublockorigin','adguard','adsbygoogle','adsense','googlesyndication','ads'];
         const scripts = Array.from(document.scripts || []);
         const hits = [];
         for(const s of scripts){
           try{
             const txt = (s.src || '') + ' ' + (s.textContent || '');
-            const lower = txt.toLowerCase();
+            const lower = (txt || '').toLowerCase();
             for(const k of keywords){ if(lower.indexOf(k) !== -1){ hits.push({script: s.src || '[inline]', reason: k}); break; } }
           }catch(e){}
         }
@@ -193,7 +219,7 @@
       const results = detect();
       if(results.length){
         const reason = results.map(r => r.script ? r.script + ' (' + r.reason + ')' : r.global).slice(0,3).join(', ');
-        makeBanner('It looks like a browser extension may be interfering with the app (e.g. ad blocking). Please try whitelisting this site or disabling extensions for this page. Detected: ' + reason);
+        makeBanner('Extension interference detected — please whitelist this site. Detected: ' + reason);
         console.warn('Extension interference detected:', results);
       }
     })();
