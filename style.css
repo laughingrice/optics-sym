@@ -34,7 +34,11 @@ body.right-collapsed #properties .panel-header h2{display:none}
 body.right-collapsed #properties .panel-controls{display:none}
 body.right-collapsed #properties .prop-group{display:none}
 body.right-collapsed #properties #props{display:none}
-body.right-collapsed #properties .panel-handle{display:block;right:0;left:auto}
+body.right-collapsed #properties .panel-handle{display:block;right:0;left:auto; transform: translate(100%,-50%);} 
+
+/* ensure handle appears above other elements and is easy to tap */
+.panel-handle{z-index:100000; padding:8px 10px; font-size:14px; line-height:1;}
+.panel-handle:hover{background:#f7fafc}
 
 /* subtle transitions */
 #palette,#properties{transition: all 180ms ease}
