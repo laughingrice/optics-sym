@@ -590,6 +590,7 @@ canvas.addEventListener('mousemove', e=>{
     // snap angles to 15° if enabled
     if(settings.snapAngles){ rotating.item.angle = Math.round(rotating.item.angle / 15) * 15; }
     if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
+    else if(rotating.item.type === 'plane'){ rotating.item.direction = (rotating.item.angle - 90 + 360) % 360; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
     propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle; rotatingChanged = true; render();
     // show angle hint near handle
     try{
@@ -632,7 +633,7 @@ canvas.addEventListener('mousemove', e=>{
 canvas.addEventListener('dblclick', e=>{
   const pos=getMouse(e);
   // rotate on double-click if selected
-  for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } showProperties(it); render(); saveState(); return }}
+  for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } else if(it.type==='plane'){ it.direction = (it.angle - 90 + 360) % 360; } showProperties(it); render(); saveState(); return }}
 });
 
 // Touch interactions: single-touch select/drag/rotate; double-tap rotates; two-finger pinch zoom & pan
@@ -672,6 +673,7 @@ canvas.addEventListener('touchmove', e=>{
       if(rotating.item.angle < 0) rotating.item.angle += 360;
       if(settings.snapAngles) rotating.item.angle = Math.round(rotating.item.angle / 15) * 15;
       if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
+      else if(rotating.item.type === 'plane'){ rotating.item.direction = (rotating.item.angle - 90 + 360) % 360; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
       propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle;
       rotatingChanged = true;
       try{
@@ -753,14 +755,16 @@ function hitTest(it, pos){
   const dx = pos.x - it.x, dy = pos.y - it.y;
   if(it.type==='light') return Math.hypot(dx,dy) < 18;
   if(it.type==='lens') return Math.hypot(dx,dy) < it.diam/2 + 6;
-  if(it.type==='mirror' || it.type==='splitter'){
-    // line hit test
+  if(it.type==='mirror' || it.type==='splitter' || it.type==='plane'){
+    // line hit test for mirror/splitter/plane
     const half = it.length/2; const ang = deg2rad(it.angle);
     const ux = Math.cos(ang), uy = Math.sin(ang);
     // project
     const px = dx*ux + dy*uy;
     const py = -dx*uy + dy*ux; // perpendicular distance
-    return (Math.abs(py) < 8 && px > -half-6 && px < half+6);
+    // planes should be slightly easier to hit
+    const tol = (it.type==='plane') ? 12 : 8;
+    return (Math.abs(py) < tol && px > -half-6 && px < half+6);
   }
   if(it.type==='hypermirror'){
     // distance to local hyperbola — compute local coords and expected Y using continuous branch
@@ -1035,6 +1039,8 @@ function drawItem(it){
       ctx.beginPath(); ctx.moveTo(arrowLen,0); ctx.lineTo(arrowLen-6,4); ctx.lineTo(arrowLen-6,-4); ctx.closePath(); ctx.fillStyle = it.color || '#ffd700'; ctx.fill();
     }catch(e){ console.warn('draw plane failed', e); }
   }
+  // plane hit target: make it easier to tap/drag by drawing an invisible grab area (no visual change, but used by hitTest)
+  if(it.type==='plane' && diagnostics && selected && selected.id === it.id){ try{ ctx.save(); ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth = 12/view.scale; const half = Math.abs(it.length)/2; ctx.beginPath(); ctx.moveTo(-half,0); ctx.lineTo(half,0); ctx.stroke(); ctx.restore(); }catch(e){} }
   if(it.type==='splitter'){
     ctx.strokeStyle='#9a4dff'; ctx.lineWidth=3*scaleFactor; ctx.beginPath(); ctx.moveTo(-it.length/2,0); ctx.lineTo(it.length/2,0); ctx.stroke();
     ctx.fillStyle='#9a4dff22'; ctx.fillRect(-8*scaleFactor,-8*scaleFactor,16*scaleFactor,16*scaleFactor);

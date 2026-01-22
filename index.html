@@ -16,11 +16,11 @@
   <main>
     <aside id="palette">
       <h2>Components</h2>
-      <button id="add-light">+ Light Source</button>
+      <button id="add-light">+ Point Light Source</button>
+      <button id="add-plane">+ Plane Light</button>
       <button id="add-lens">+ Lens</button>
       <button id="add-mirror">+ Mirror</button>
       <button id="add-hypermirror">+ Hyperbolic Mirror</button>
-      <button id="add-plane">+ Plane Light</button>
       <button id="add-splitter">+ Beam Splitter</button>
       <button id="add-aperture">+ Aperture</button>
       <hr />
@@ -53,7 +53,7 @@
         <div id="light-props" class="prop-group">
           <label>Beams: <input id="prop-beams" type="range" min="1" max="200" value="15" /><span id="val-beams">15</span></label>
           <label>Direction: <input id="prop-direction" type="range" min="0" max="360" value="0" /><span id="val-direction">0°</span></label>
-          <label>Angle spread: <input id="prop-angle" type="range" min="0" max="180" value="10" /><span id="val-angle">10°</span></label>
+          <label>Angle spread: <input id="prop-angle" type="range" min="0" max="360" value="10" /><span id="val-angle">10°</span></label>
           <label>Even distribution: <input id="prop-even" type="checkbox" checked /></label>
           <label>Visibility: <input id="prop-show-rays" type="checkbox" checked style="margin-left:8px" /></label>
           <label>Color: <input id="prop-color" type="color" value="#ffd700" style="margin-left:8px" /> <span id="val-color" style="margin-left:6px"></span></label>
