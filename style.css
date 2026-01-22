@@ -28,7 +28,8 @@ body.left-collapsed #palette{padding:6px}
 body.left-collapsed #palette .panel-header h2{display:none}
 body.left-collapsed #palette .panel-controls{display:none}
 body.left-collapsed #palette button{display:none}
-body.left-collapsed #palette .panel-handle{display:block;left:0}
+/* show a fixed, prominent handle at the screen edge for reopening */
+body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:8px;top:72px;transform:none;min-width:44px;min-height:44px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001}
 
 body.right-collapsed main{--right-min:36px; --right-max:36px}
 body.right-collapsed #properties{padding:6px}
@@ -36,7 +37,8 @@ body.right-collapsed #properties .panel-header h2{display:none}
 body.right-collapsed #properties .panel-controls{display:none}
 body.right-collapsed #properties .prop-group{display:none}
 body.right-collapsed #properties #props{display:none}
-body.right-collapsed #properties .panel-handle{display:block;right:0;left:auto; transform: translate(100%,-50%);} 
+/* show a fixed, prominent handle at the screen edge for reopening */
+body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fixed;right:8px;top:72px;transform:none;min-width:44px;min-height:44px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001}
 
 /* ensure handle appears above other elements and is easy to tap */
 .panel-handle{z-index:100000; padding:8px 10px; font-size:14px; line-height:1;}
