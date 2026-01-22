@@ -244,6 +244,8 @@ try{
       try{ if(expanded) localStorage.setItem(keyLocal, '1'); else localStorage.removeItem(keyLocal); }catch(e){}
       // update button glyph and aria
       if(expanded){ btn.setAttribute('aria-expanded','false'); btn.textContent = '◂'; } else { btn.setAttribute('aria-expanded','true'); btn.textContent = '▸'; }
+      // adjust canvas size after layout settles
+      try{ setTimeout(()=>{ try{ adjustCanvasSize(); render(); }catch(e){console.warn('post-toggle adjust failed', e); } }, 40); }catch(e){}
     });
   });
 
@@ -256,6 +258,8 @@ try{
       document.body.classList.remove(cls);
       try{ localStorage.removeItem(keyLocal); }catch(e){}
       const btn = document.querySelector('.collapse-toggle[data-target="'+target+'"]'); if(btn){ btn.setAttribute('aria-expanded','true'); btn.textContent = '▸'; }
+      // adjust canvas size after layout settles
+      try{ setTimeout(()=>{ try{ adjustCanvasSize(); render(); }catch(e){console.warn('post-handle adjust failed', e); } }, 40); }catch(e){}
     });
   });
 
