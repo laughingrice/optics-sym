@@ -48,7 +48,7 @@ let dragOffset = {x:0,y:0};
 // Settings
 const settings = {
   showRays: true,
-  maxDepth: 6,
+  maxDepth: 20,
   raySamples: 15,
   snapAngles: false, // snap rotations to 15° when enabled
   // disable experimental thick lens model by default until it's stable
