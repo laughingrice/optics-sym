@@ -21,11 +21,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install deps
-        run: npm ci
+      - name: Install production deps
+        run: npm ci --omit=dev
 
-      - name: Build site
-        run: npm run build
+      - name: Build site (CI-safe)
+        run: npm run build:ci
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v1
