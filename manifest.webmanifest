@@ -1,7 +1,7 @@
 {
   "name": "Optics Sandbox",
   "short_name": "Optics",
-  "start_url": ".",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#fafafa",
   "theme_color": "#0b84ff",
