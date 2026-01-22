@@ -395,18 +395,25 @@ function showProperties(item){
 
   // show/hide groups
   document.querySelectorAll('.prop-group').forEach(g=>g.style.display='none');
-  if(item.type==='light' || item.type==='plane'){
+  if(item.type==='light'){
     document.getElementById('light-props').style.display='block';
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
-    propAngle.value = item.spread || 0; valAngle.textContent=(item.spread||0)+"°";
-    propEven.checked = !!item.even;
+    propAngle.value = item.spread; valAngle.textContent=item.spread+"°";
+    propEven.checked = !!item.even; propAngle.disabled = false; propEven.disabled = false; valAngle.textContent = item.spread+"°";
     // visibility
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     // color
     if(propColor){ propColor.value = item.color || '#ffd700'; valColor.textContent = propColor.value; }
   }
-  if(item.type === 'plane'){
+  else if(item.type === 'plane'){
+    document.getElementById('light-props').style.display='block';
+    propBeams.value = item.beams; valBeams.textContent=item.beams;
+    propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
+    // plane: no angle spread or even distribution
+    propAngle.value = 0; valAngle.textContent = '—'; propAngle.disabled = true; propEven.checked = false; propEven.disabled = true;
+    if(propShowRays) propShowRays.checked = (item.showRays !== false);
+    if(propColor){ propColor.value = item.color || '#ffd700'; valColor.textContent = propColor.value; }
     document.getElementById('plane-props').style.display='block';
     propPlaneLength.value = item.length || 240; valPlaneLength.textContent = propPlaneLength.value;
   }
@@ -1086,10 +1093,10 @@ function drawItem(it){
 }
 
 function renderLightsLegend(){ const container = document.getElementById('lights-legend'); if(!container) return; container.innerHTML = ''; const title = document.createElement('div'); title.style.fontWeight='600'; title.style.marginBottom='6px'; title.textContent = 'Lights'; container.appendChild(title);
-  const lights = scene.items.filter(i=>i.type==='light'); if(lights.length===0){ const p = document.createElement('div'); p.style.color='#666'; p.textContent = 'No lights in scene'; container.appendChild(p); return; }
+  const lights = scene.items.filter(i=>i.type==='light' || i.type === 'plane'); if(lights.length===0){ const p = document.createElement('div'); p.style.color='#666'; p.textContent = 'No lights in scene'; container.appendChild(p); return; }
   for(const src of lights){ const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.marginBottom='6px'; const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = (src.showRays !== false); cb.onchange = ()=>{ src.showRays = cb.checked; if(selected && selected.id === src.id && propShowRays) propShowRays.checked = cb.checked; saveState(); render(); };
     const sw = document.createElement('div'); sw.style.width='16px'; sw.style.height='14px'; sw.style.backgroundColor = src.color || '#ffd700'; sw.style.borderRadius='3px'; sw.style.border='1px solid #ddd'; sw.title = src.color || '';
-    const lbl = document.createElement('span'); lbl.textContent = 'Light #' + src.id; lbl.style.cursor='pointer'; lbl.style.userSelect='none'; lbl.onclick = ()=>{ selected = src; showProperties(src); render(); };
+    const lbl = document.createElement('span'); lbl.textContent = (src.type === 'plane' ? 'Plane #' : 'Light #') + src.id; lbl.style.cursor='pointer'; lbl.style.userSelect='none'; lbl.onclick = ()=>{ selected = src; showProperties(src); render(); };
     row.appendChild(cb); row.appendChild(sw); row.appendChild(lbl);
     sw.onclick = ()=>{ selected = src; showProperties(src); render(); };
     container.appendChild(row); }
