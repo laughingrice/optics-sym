@@ -16,12 +16,17 @@ main{display:grid;/* left/right column widths are controlled by CSS vars for col
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin:-6px -6px 8px -6px;padding:8px;border-radius:6px}
 .panel-header h2{margin:0;font-size:16px}
 .panel-controls{display:flex;gap:6px}
-.collapse-toggle{background:transparent;border:1px solid transparent;padding:6px;border-radius:6px;cursor:pointer}
+.collapse-toggle{background:transparent;border:1px solid transparent;padding:4px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;font-size:22px}
 .collapse-toggle:hover{background:#f1f5f9}
+/* Larger, bolder appearance for mobile/touch */
+.collapse-toggle{font-weight:700;color:#0b84ff}
+.collapse-toggle:focus{outline:2px solid rgba(11,132,255,0.18);outline-offset:2px} 
 /* panel handle shown when collapsed */
-.panel-handle{display:none;position:absolute;top:50%;background:#fff;border:1px solid #e6e6e6;border-radius:8px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;z-index:100000;min-width:34px;min-height:34px;display:flex;align-items:center;justify-content:center}
-.panel-handle[data-target="left"]{left:0; transform:translate(-120%,-50%)}
-.panel-handle[data-target="right"]{right:0; transform:translate(120%,-50%)}
+.panel-handle{display:none;position:absolute;top:50%;background:#fff;border:1px solid #e6e6e6;border-radius:10px;padding:10px;box-shadow:0 4px 18px rgba(2,6,23,0.12);cursor:pointer;z-index:100000;min-width:64px;min-height:64px;font-size:20px;display:flex;align-items:center;justify-content:center}
+.panel-handle[data-target="left"]{left:0; transform:translate(-140%,-50%)}
+.panel-handle[data-target="right"]{right:0; transform:translate(140%,-50%)}
+.panel-handle:hover{background:#f7fafc;transform:scale(1.02)}
+.panel-handle:active{transform:scale(0.98)}
 /* collapsed states */
 body.left-collapsed main{--left-min:36px; --left-max:36px}
 body.left-collapsed #palette{padding:6px}
