@@ -75,7 +75,12 @@ async function ensureDir(d){ if(!fs.existsSync(d)) fs.mkdirSync(d, {recursive:tr
       const webDir = path.join(root, 'www', 'icons');
       await ensureDir(webDir);
       const webSizes = [180, 192, 512];
-      for(const s of webSizes){ const filename = `icon-${s}.png`; const outPath = path.join(outAssets, filename); const outWebPath = path.join(webDir, filename); await sharp(svgBuf).resize(s, s, {fit:'cover'}).png({quality:100}).toFile(outPath); await sharp(svgBuf).resize(s,s,{fit:'cover'}).png({quality:100}).toFile(outWebPath); console.log(`Wrote web icon ${outWebPath} (${s}x${s})`); contents.images.push({idiom:'web', size:`${s}x${s}`, scale:'1x', filename}); }
+      for(const s of webSizes){ const filename = `icon-${s}.png`; const outPath = path.join(outAssets, filename); const outWebPath = path.join(webDir, filename); const outAssetsWeb = path.join(root, 'assets','webicons', filename);
+        await sharp(svgBuf).resize(s, s, {fit:'cover'}).png({quality:100}).toFile(outPath);
+        await sharp(svgBuf).resize(s,s,{fit:'cover'}).png({quality:100}).toFile(outWebPath);
+        await ensureDir(path.join(root, 'assets','webicons'));
+        await sharp(svgBuf).resize(s,s,{fit:'cover'}).png({quality:100}).toFile(outAssetsWeb);
+        console.log(`Wrote web icon ${outWebPath} (${s}x${s})`); contents.images.push({idiom:'web', size:`${s}x${s}`, scale:'1x', filename}); }
     }catch(e){ console.warn('web icon generation failed', e); }
 
     console.log('Done. You can now open Xcode and verify AppIcon.appiconset contains the generated PNGs (or drag them into slots).');
