@@ -16,15 +16,15 @@ main{display:grid;/* left/right column widths are controlled by CSS vars for col
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin:-6px -6px 8px -6px;padding:8px;border-radius:6px}
 .panel-header h2{margin:0;font-size:16px}
 .panel-controls{display:flex;gap:6px}
-.collapse-toggle{background:transparent;border:3px solid transparent;padding:6px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:176px;min-height:176px;font-size:88px}
+.collapse-toggle{background:transparent;border:1px solid transparent;padding:6px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;font-size:20px}
 .collapse-toggle:hover{background:#f1f5f9}
 /* Larger, bolder appearance for mobile/touch */
-.collapse-toggle{font-weight:900;color:#0b84ff}
-.collapse-toggle:focus{outline:4px solid rgba(11,132,255,0.18);outline-offset:6px} 
+.collapse-toggle{font-weight:700;color:#0b84ff}
+.collapse-toggle:focus{outline:2px solid rgba(11,132,255,0.18);outline-offset:2px} 
 /* panel handle shown when collapsed */
-.panel-handle{display:none;position:absolute;top:50%;background:#fff;border:3px solid #e6e6e6;border-radius:14px;padding:14px;box-shadow:0 8px 28px rgba(2,6,23,0.16);cursor:pointer;z-index:100000;min-width:192px;min-height:192px;font-size:72px;display:flex;align-items:center;justify-content:center}
-.panel-handle[data-target="left"]{left:0; transform:translate(-180%,-50%)}
-.panel-handle[data-target="right"]{right:0; transform:translate(180%,-50%)}
+.panel-handle{display:none;position:absolute;top:50%;background:#fff;border:2px solid #e6e6e6;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);cursor:pointer;z-index:100000;min-width:80px;min-height:80px;font-size:28px;display:flex;align-items:center;justify-content:center}
+.panel-handle[data-target="left"]{left:0; transform:translate(-140%,-50%)}
+.panel-handle[data-target="right"]{right:0; transform:translate(140%,-50%)}
 .panel-handle:hover{background:#f7fafc;transform:scale(1.02)}
 .panel-handle:active{transform:scale(0.98)}
 /* collapsed states */
@@ -45,11 +45,11 @@ body.right-collapsed #properties #props{display:none}
 /* show a fixed, prominent handle at the screen edge for reopening */
 body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fixed;right:12px;top:96px;transform:none;min-width:192px;min-height:192px;border-radius:14px;padding:14px;box-shadow:0 8px 28px rgba(2,6,23,0.14);background:#fff;z-index:100001;}
 /* add a subtle pulse to draw attention */
-@keyframes _opticspulse{0%{box-shadow:0 8px 28px rgba(2,6,23,0.06)}50%{box-shadow:0 8px 36px rgba(11,132,255,0.12)}100%{box-shadow:0 8px 28px rgba(2,6,23,0.06)}}
-body.right-collapsed .panel-handle[data-target="right"]{animation:_opticspulse 1.6s ease-in-out 2}
+@keyframes _opticspulse{0%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}50%{box-shadow:0 6px 26px rgba(11,132,255,0.12)}100%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}}
+body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fixed;right:calc(12px + env(safe-area-inset-right));top:64px;transform:none;min-width:96px;min-height:96px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:32px;animation:_opticspulse 1.6s ease-in-out 2}
 
 /* ensure handle appears above other elements and is easy to tap */
-.panel-handle{z-index:100000; padding:8px 10px; font-size:14px; line-height:1;}
+body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:12px;top:64px;transform:none;min-width:96px;min-height:96px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:32px}
 .panel-handle:hover{background:#f7fafc}
 
 /* subtle transitions */
