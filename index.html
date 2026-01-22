@@ -151,6 +151,44 @@
     </aside>
   </main>
 
+  <!-- TEMP: iPad error reporter (remove after debugging) -->
+  <script>
+    (function(){
+      function showErrorBanner(msg){
+        try{
+          let b=document.getElementById('debug-error-banner');
+          if(!b){
+            b=document.createElement('div');
+            b.id='debug-error-banner';
+            b.style.position='fixed';
+            b.style.left='12px'; b.style.top='12px'; b.style.right='12px';
+            b.style.zIndex='99999';
+            b.style.background='#ffdddd'; b.style.color='#800';
+            b.style.padding='10px'; b.style.borderRadius='8px';
+            b.style.fontSize='13px'; b.style.boxShadow='0 6px 20px rgba(2,6,23,0.08)';
+            document.body.appendChild(b);
+          }
+          b.textContent=msg;
+        }catch(e){ console.error('banner failed',e); }
+      }
+      window.addEventListener('error', function(e){
+        const msg = 'Error: '+(e.message||'')+' at '+(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0)+' -- '+(e.error && e.error.stack ? e.error.stack : '');
+        console.error('window.error', e);
+        showErrorBanner(msg);
+      }, true);
+      window.addEventListener('unhandledrejection', function(e){
+        const reason = e.reason && e.reason.stack ? e.reason.stack : (e.reason && e.reason.message ? e.reason.message : JSON.stringify(e.reason));
+        const msg = 'UnhandledRejection: '+ reason;
+        console.error('unhandledrejection', e);
+        showErrorBanner(msg);
+      });
+      window.onerror = function(message, source, lineno, colno, error){
+        const msg='onerror: '+message+' at '+source+':'+lineno+':'+colno;
+        console.error('window.onerror', {message, source, lineno, colno, error});
+        showErrorBanner(msg);
+      };
+    })();
+  </script>
   <script src="app.js"></script>
   <script>
     try{
