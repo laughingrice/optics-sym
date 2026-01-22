@@ -68,7 +68,8 @@ body.right-collapsed #properties .panel-controls{display:block !important}
 
 
 /* ensure handle appears above other elements and is easy to tap */
-body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:12px;top:64px;transform:none;min-width:96px;min-height:96px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:32px}
+/* left uncollapse handle: match right size for consistency */
+body.left-collapsed .panel-handle[data-target="left"]{display:flex !important;position:fixed;left:12px;top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px}
 .panel-handle:hover{background:#f7fafc}
 
 /* subtle transitions */
