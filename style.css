@@ -48,7 +48,24 @@ body.right-collapsed #properties #props{display:none}
 body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fixed;right:12px;top:96px;transform:none;min-width:192px;min-height:192px;border-radius:14px;padding:14px;box-shadow:0 8px 28px rgba(2,6,23,0.14);background:#fff;z-index:100001;}
 /* add a subtle pulse to draw attention */
 @keyframes _opticspulse{0%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}50%{box-shadow:0 6px 26px rgba(11,132,255,0.12)}100%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}}
-body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fixed;right:calc(12px + env(safe-area-inset-right));top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px;animation:_opticspulse 1.6s ease-in-out 2}
+/* right uncollapse handle: ensure visibility at viewport edge */
+body.right-collapsed .panel-handle[data-target="right"]{display:flex !important;position:fixed;right:calc(12px + env(safe-area-inset-right));top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px;animation:_opticspulse 1.6s ease-in-out 2}
+
+/* Pin the properties header near the right edge when collapsed so its title stays visible even with no selection */
+body.right-collapsed #properties .panel-header h2{
+  display:block !important;
+  position:fixed;
+  right:calc(72px + env(safe-area-inset-right)); /* sit to the left of the handle */
+  top:20px;
+  background:transparent;
+  white-space:nowrap;
+  z-index:100002;
+  font-size:14px;
+}
+
+/* Ensure the collapse control stays visible too */
+body.right-collapsed #properties .panel-controls{display:block !important}
+
 
 /* ensure handle appears above other elements and is easy to tap */
 body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:12px;top:64px;transform:none;min-width:96px;min-height:96px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:32px}
