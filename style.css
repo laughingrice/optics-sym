@@ -28,7 +28,7 @@ main{display:grid;/* left/right column widths are controlled by CSS vars for col
 .panel-handle:hover{background:#f7fafc;transform:scale(1.02)}
 .panel-handle:active{transform:scale(0.98)}
 /* collapsed states */
-body.left-collapsed main{--left-min:36px; --left-max:36px}
+body.left-collapsed main{--left-min:28px; --left-max:28px}
 body.left-collapsed #palette{padding:6px}
 /* keep the header and controls visible so users can re-open the panel even when collapsed */
 body.left-collapsed #palette .panel-header h2{display:block}
@@ -37,7 +37,7 @@ body.left-collapsed #palette button{display:none}
 /* show a fixed, prominent handle at the screen edge for reopening */
 body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:8px;top:72px;transform:none;min-width:44px;min-height:44px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001}
 
-body.right-collapsed main{--right-min:36px; --right-max:36px}
+body.right-collapsed main{--right-min:28px; --right-max:28px}
 body.right-collapsed #properties{padding:6px}
 /* keep the header and controls visible so users can re-open the properties panel even when collapsed */
 body.right-collapsed #properties .panel-header h2{display:block}
@@ -49,13 +49,13 @@ body.right-collapsed .panel-handle[data-target="right"]{display:flex;position:fi
 /* add a subtle pulse to draw attention */
 @keyframes _opticspulse{0%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}50%{box-shadow:0 6px 26px rgba(11,132,255,0.12)}100%{box-shadow:0 6px 18px rgba(2,6,23,0.06)}}
 /* right uncollapse handle: ensure visibility at viewport edge */
-body.right-collapsed .panel-handle[data-target="right"]{display:flex !important;position:fixed;right:calc(12px + env(safe-area-inset-right));top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px;animation:_opticspulse 1.6s ease-in-out 2}
+body.right-collapsed .panel-handle[data-target="right"]{display:flex !important;position:fixed;right:calc(6px + env(safe-area-inset-right));top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px;animation:_opticspulse 1.6s ease-in-out 2}
 
 /* Pin the properties header near the right edge when collapsed so its title stays visible even with no selection */
 body.right-collapsed #properties .panel-header h2{
   display:block !important;
   position:fixed;
-  right:calc(72px + env(safe-area-inset-right)); /* sit to the left of the handle */
+  right:calc(56px + env(safe-area-inset-right)); /* sit to the left of the handle */
   top:20px;
   background:transparent;
   white-space:nowrap;
@@ -69,7 +69,7 @@ body.right-collapsed #properties .panel-controls{display:block !important}
 
 /* ensure handle appears above other elements and is easy to tap */
 /* left uncollapse handle: match right size for consistency */
-body.left-collapsed .panel-handle[data-target="left"]{display:flex !important;position:fixed;left:12px;top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px}
+body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:6px;top:64px;transform:none;min-width:56px;min-height:56px;border-radius:8px;padding:6px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001;font-size:20px}
 .panel-handle:hover{background:#f7fafc}
 
 /* subtle transitions */
