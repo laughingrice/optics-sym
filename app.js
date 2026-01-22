@@ -450,7 +450,12 @@ function showProperties(item){
   const panelControls = propsAside ? propsAside.querySelector('.panel-controls') : null;
   if(!item){
     // Always keep header and controls visible so users can find the properties panel even when collapsed and no selection
-    if(headerH2) headerH2.style.display = '';
+    if(headerH2) {
+      headerH2.style.display = '';
+      // if the right panel is collapsed, add a helper class so CSS pins it to the viewport
+      if(document.body.classList.contains('right-collapsed')) headerH2.classList.add('pinned-when-collapsed');
+      else headerH2.classList.remove('pinned-when-collapsed');
+    }
     if(panelControls) panelControls.style.display = '';
     propsPanel.style.display='none'; noSel.style.display='block'; return }
   // when an item is present ensure header shows the type and controls remain visible
