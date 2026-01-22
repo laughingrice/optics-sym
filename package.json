@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "build": "npm run generate:icons && mkdir -p www && cp -R index.html app.js style.css manifest.webmanifest sw.js offline.html www/ && mkdir -p www/icons && cp -R assets/appicons/icon-180.png assets/appicons/icon-192.png assets/appicons/icon-512.png www/icons/",
-    "build:ci": "mkdir -p www && cp -R index.html app.js style.css manifest.webmanifest sw.js offline.html www/ && mkdir -p www/icons && cp -R assets/appicons/icon-180.png assets/appicons/icon-192.png assets/appicons/icon-512.png www/icons/",
+    "build:ci": "mkdir -p www && cp -R index.html app.js style.css manifest.webmanifest sw.js offline.html www/ && mkdir -p www/icons && cp -R assets/webicons/icon-180.png assets/webicons/icon-192.png assets/webicons/icon-512.png www/icons/",
     "generate:icons": "node tools/generate-icons.js",
     "cap:copy": "npx cap copy",
     "cap:open": "npx cap open ios",
