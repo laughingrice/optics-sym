@@ -6,8 +6,40 @@ body{overflow-y:scroll; scrollbar-gutter: stable both-edges;}
 #palette,#properties{max-height:calc(100vh - 160px);overflow:auto}
 header{padding:12px 20px;background:#0f172a;color:#fff}
 header h1{margin:0;font-size:18px}
-main{display:grid;grid-template-columns:minmax(160px,220px) 1fr minmax(240px,320px);gap:12px;padding:12px;height:calc(100vh - 92px)}
-#palette,#properties{background:#fff;border-radius:8px;padding:12px;box-shadow:0 2px 10px rgba(2,6,23,0.08)}
+main{display:grid;/* left/right column widths are controlled by CSS vars for collapse behavior */
+  --left-min:160px; --left-max:198px; /* reduced by ~10% */
+  --right-min:216px; --right-max:288px; /* reduced by ~10% */
+  grid-template-columns: minmax(var(--left-min), var(--left-max)) 1fr minmax(var(--right-min), var(--right-max));
+  gap:12px;padding:12px;height:calc(100vh - 92px)}
+#palette,#properties{background:#fff;border-radius:8px;padding:12px;box-shadow:0 2px 10px rgba(2,6,23,0.08);position:relative}
+/* panel header and controls */
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin:-6px -6px 8px -6px;padding:8px;border-radius:6px}
+.panel-header h2{margin:0;font-size:16px}
+.panel-controls{display:flex;gap:6px}
+.collapse-toggle{background:transparent;border:1px solid transparent;padding:6px;border-radius:6px;cursor:pointer}
+.collapse-toggle:hover{background:#f1f5f9}
+/* panel handle shown when collapsed */
+.panel-handle{display:none;position:absolute;left:0;top:50%;transform:translate(-100%,-50%);background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:6px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer}
+/* collapsed states */
+body.left-collapsed main{--left-min:36px; --left-max:36px}
+body.left-collapsed #palette{padding:6px}
+body.left-collapsed #palette .panel-header h2{display:none}
+body.left-collapsed #palette .panel-controls{display:none}
+body.left-collapsed #palette button{display:none}
+body.left-collapsed #palette .panel-handle{display:block;left:0}
+
+body.right-collapsed main{--right-min:36px; --right-max:36px}
+body.right-collapsed #properties{padding:6px}
+body.right-collapsed #properties .panel-header h2{display:none}
+body.right-collapsed #properties .panel-controls{display:none}
+body.right-collapsed #properties .prop-group{display:none}
+body.right-collapsed #properties #props{display:none}
+body.right-collapsed #properties .panel-handle{display:block;right:0;left:auto}
+
+/* subtle transitions */
+#palette,#properties{transition: all 180ms ease}
+.panel-handle{transition: opacity 160ms ease}
+
 #viewport{position:relative;background:linear-gradient(180deg,#eef2ff 0%,#ffffff 100%);display:flex;align-items:center;justify-content:center;border-radius:8px;padding:8px;overflow:hidden}
 canvas{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
 canvas{background:#fff;border:1px solid #ddd;border-radius:6px}

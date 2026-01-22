@@ -21,15 +21,16 @@
   <div id="diag-popup" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:12px;border:1px solid #eee;z-index:1001;max-width:520px;max-height:60vh;overflow:auto;box-shadow:0 10px 40px rgba(2,6,23,0.08);font-size:13px"></div>
   <div id="interaction-hint" style="display:none;position:fixed;pointer-events:none;padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.85);color:#fff;z-index:1000;font-size:13px;transform:translate(-50%,-150%);"></div>
   <main>
-    <aside id="palette">
-      <h2>Components</h2>
-      <button id="add-light">+ Point Light Source</button>
+    <aside id="palette" class="panel">
+      <div class="panel-header"><h2>Components</h2><div class="panel-controls"><button class="collapse-toggle" data-target="left" aria-expanded="true" title="Collapse components">▸</button></div></div>
+      <button id="add-light">+ Point Light</button>
       <button id="add-plane">+ Plane Light</button>
       <button id="add-lens">+ Lens</button>
       <button id="add-mirror">+ Mirror</button>
       <button id="add-hypermirror">+ Hyperbolic Mirror</button>
       <button id="add-splitter">+ Beam Splitter</button>
       <button id="add-aperture">+ Aperture</button>
+      <div class="panel-handle" data-target="left" title="Open components">☰</div>
       <hr />
       <button id="clear-scene">Clear Scene</button>
       <button id="export-png">Export PNG</button>
@@ -47,10 +48,11 @@
       <canvas id="scene" width="1200" height="700"></canvas>
     </section>
 
-    <aside id="properties">
-      <h2>Properties</h2>
+    <aside id="properties" class="panel">
+      <div class="panel-header"><h2>Properties</h2><div class="panel-controls"><button class="collapse-toggle" data-target="right" aria-expanded="true" title="Collapse properties">▸</button></div></div>
       <div id="no-selection">No object selected</div>
       <div id="props" style="display:none">
+      <div class="panel-handle" data-target="right" title="Open properties"></div>
         <div><strong id="props-type"></strong></div>
 
         <div id="angle-props" class="prop-group">

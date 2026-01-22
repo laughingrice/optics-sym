@@ -223,6 +223,43 @@ try{
   const undoBtn = document.getElementById('undo-btn');
   const redoBtn = document.getElementById('redo-btn');
 
+  // panel collapse controls
+  const collapseToggles = Array.from(document.querySelectorAll('.collapse-toggle'));
+  collapseToggles.forEach(btn=>{
+    const target = btn.dataset.target;
+    const key = target === 'left' ? 'panel-left-collapsed' : 'panel-right-collapsed';
+    const bodyClass = target === 'left' ? 'left-collapsed' : 'right-collapsed';
+    // init state from localStorage or media query
+    const stored = (function(){ try{ return localStorage.getItem(key); }catch(e){ return null; } })();
+    const prefersCollapsed = (window.innerWidth || 0) < 720;
+    if(stored === '1' || (stored === null && prefersCollapsed)){
+      document.body.classList.add(bodyClass);
+      btn.setAttribute('aria-expanded','false'); btn.textContent = '◂';
+    }
+    btn.addEventListener('click', ()=>{
+      const isLeft = target === 'left';
+      const cls = isLeft ? 'left-collapsed' : 'right-collapsed';
+      const keyLocal = isLeft ? 'panel-left-collapsed' : 'panel-right-collapsed';
+      const expanded = document.body.classList.toggle(cls); // toggled on => now collapsed (truthy)
+      try{ if(expanded) localStorage.setItem(keyLocal, '1'); else localStorage.removeItem(keyLocal); }catch(e){}
+      // update button glyph and aria
+      if(expanded){ btn.setAttribute('aria-expanded','false'); btn.textContent = '◂'; } else { btn.setAttribute('aria-expanded','true'); btn.textContent = '▸'; }
+    });
+  });
+
+  // panel handle click to re-open
+  document.querySelectorAll('.panel-handle').forEach(h=>{
+    h.addEventListener('click', ()=>{
+      const target = h.dataset.target;
+      const cls = target === 'left' ? 'left-collapsed' : 'right-collapsed';
+      const keyLocal = target === 'left' ? 'panel-left-collapsed' : 'panel-right-collapsed';
+      document.body.classList.remove(cls);
+      try{ localStorage.removeItem(keyLocal); }catch(e){}
+      const btn = document.querySelector('.collapse-toggle[data-target="'+target+'"]'); if(btn){ btn.setAttribute('aria-expanded','true'); btn.textContent = '▸'; }
+    });
+  });
+
+
   addLightBtn.onclick = ()=>{scene.items.push(makeItem('light')); saveState(); render();}
   addLensBtn.onclick  = ()=>{scene.items.push(makeItem('lens')); saveState(); render();}
   addMirrorBtn.onclick=()=>{scene.items.push(makeItem('mirror')); saveState(); render();}
