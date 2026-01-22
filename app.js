@@ -400,7 +400,10 @@ function showProperties(item){
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
     propAngle.value = item.spread; valAngle.textContent=item.spread+"°";
-    propEven.checked = !!item.even; propAngle.disabled = false; propEven.disabled = false; valAngle.textContent = item.spread+"°";
+    propEven.checked = !!item.even; propAngle.disabled = false; propEven.disabled = false;
+    // ensure angle and even controls are visible for point lights
+    try{ if(propAngle && propAngle.parentElement) propAngle.parentElement.style.display = 'block'; }catch(e){}
+    try{ if(propEven && propEven.parentElement) propEven.parentElement.style.display = 'block'; }catch(e){}
     // visibility
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     // color
@@ -410,8 +413,9 @@ function showProperties(item){
     document.getElementById('light-props').style.display='block';
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
-    // plane: no angle spread or even distribution
-    propAngle.value = 0; valAngle.textContent = '—'; propAngle.disabled = true; propEven.checked = false; propEven.disabled = true;
+    // plane: hide angle spread and even distribution controls (they're meaningless for plane emitters)
+    try{ if(propAngle && propAngle.parentElement) propAngle.parentElement.style.display = 'none'; }catch(e){}
+    try{ if(propEven && propEven.parentElement) propEven.parentElement.style.display = 'none'; }catch(e){}
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     if(propColor){ propColor.value = item.color || '#ffd700'; valColor.textContent = propColor.value; }
     document.getElementById('plane-props').style.display='block';
