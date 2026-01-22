@@ -17,8 +17,8 @@ let W = canvas.width; let H = canvas.height;
 
 // status helpers and global error handlers
 function setStatus(text, isError){ const el = document.getElementById('app-status'); if(el){ el.textContent = text; el.classList.toggle('error', !!isError); } }
-window.addEventListener('error', (e)=>{ try{ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent = (e && e.message ? e.message : String(e)) + (e.filename ? '\n' + e.filename + ':' + e.lineno + ':' + e.colno : ''); } setStatus('Error', true); console.error('Uncaught error', e); }catch(err){console.error(err)} });
-window.addEventListener('unhandledrejection', (e)=>{ try{ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; const msg = e && e.reason && e.reason.message ? e.reason.message : String(e.reason); b.textContent = 'Unhandled Rejection: ' + msg; } setStatus('Error', true); console.error('Unhandled rejection', e); }catch(err){console.error(err)} });
+window.addEventListener('error', (e)=>{ try{ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; let msg = (e && e.message ? e.message : String(e)) + (e.filename ? '\n' + e.filename + ':' + e.lineno + ':' + e.colno : ''); if(e && e.error && e.error.stack) msg += '\n\nSTACK:\n' + e.error.stack; try{ msg += '\n\nEvent: ' + safeStringify({message:e.message, filename:e.filename, lineno:e.lineno, colno:e.colno, stack: e && e.error && e.error.stack ? e.error.stack.split('\n').slice(0,10) : undefined}, 2); }catch(_){ /* ignore */ } b.textContent = msg; } setStatus('Error', true); console.error('Uncaught error', e); }catch(err){console.error(err)} });
+window.addEventListener('unhandledrejection', (e)=>{ try{ const b=document.getElementById('app-error'); if(b){ b.style.display='block'; const msg = e && e.reason && e.reason.message ? e.reason.message : String(e.reason); let out = 'Unhandled Rejection: ' + msg; if(e && e.reason && e.reason.stack) out += '\n\nSTACK:\n' + e.reason.stack; try{ out += '\n\nReason: ' + safeStringify(e.reason,2); }catch(_){ } b.textContent = out; } setStatus('Error', true); console.error('Unhandled rejection', e); }catch(err){console.error(err)} });
 
 // View transform (world space to canvas)
 const view = { offsetX: 0, offsetY: 0, scale: 0.9 };
@@ -751,17 +751,16 @@ function hitTest(it, pos){
     return (Math.abs(py) < 8 && px > -half-6 && px < half+6);
   }
   if(it.type==='hypermirror'){
-    // distance to local hyperbola — compute local coords and expected Y
+    // distance to local hyperbola — compute local coords and expected Y using continuous branch
     const ang = deg2rad(it.angle || 0); const cosA = Math.cos(ang), sinA = Math.sin(ang);
     const lx = dx * cosA + dy * sinA; const ly = -dx * sinA + dy * cosA;
     const absX = Math.abs(lx);
-    if(absX < it.a - 6) return false;
-    const maxX = it.a + Math.abs(it.length)/2 + 6;
-    if(absX > maxX) return false;
-    const val = (absX*absX)/(it.a*it.a) - 1;
-    if(val < 0) return false;
+    const halfLen = Math.abs(it.length)/2;
+    // clamp to visible segment (allow all X within segment length)
+    if(absX > halfLen + 6) return false;
+    const val = (absX*absX)/(it.a*it.a) + 1;
     const expectY = it.b * Math.sqrt(val);
-    return (Math.abs(Math.abs(ly) - expectY) < 10); // hit threshold
+    return (Math.abs(Math.abs(ly) - expectY) < 12); // hit threshold
   }
   if(it.type==='aperture'){
     // orientable linear aperture element — hit if within total length segment
@@ -799,10 +798,11 @@ function render(){
       try{
         ctx.save(); ctx.strokeStyle='rgba(20,160,20,0.65)'; ctx.lineWidth=1/view.scale;
         const ang = deg2rad(it.angle||0); const cosA = Math.cos(ang), sinA = Math.sin(ang);
-        const xStart = it.a; const xEnd = it.a + Math.abs(it.length)/2; const steps = 18;
-        for(let i=0;i<=steps;i++){ const X = xStart + (xEnd-xStart)*(i/steps); const Y = it.b * Math.sqrt(Math.max(0, (X*X)/(it.a*it.a) - 1)); const p1 = {x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA}; const p2 = {x: it.x + X*cosA + Y*sinA, y: it.y + X*sinA - Y*cosA}; // normals
-          const nLocal1 = {x: 2*X/(it.a*it.a), y: -2*Y/(it.b*it.b)}; const nl1 = Math.hypot(nLocal1.x,nLocal1.y); if(nl1){ nLocal1.x/=nl1; nLocal1.y/=nl1; }
-          const nW1 = {x: nLocal1.x*cosA - nLocal1.y*sinA, y: nLocal1.x*sinA + nLocal1.y*cosA}; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p1.x + nW1.x*16, p1.y + nW1.y*16); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p2.x + nW1.x*16, p2.y + nW1.y*16); ctx.stroke(); }
+        const halfLen = Math.abs(it.length)/2; const steps = 18;
+        const b2 = it.b*it.b, a2 = it.a*it.a;
+        for(let i=0;i<=steps;i++){ const X = -halfLen + (i/steps)*(2*halfLen); const Y = it.b * Math.sqrt( (X*X)/a2 + 1 ); const pTop = {x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA}; // top branch point
+          const nLocal = {x: 2*(b2/a2)*X, y: -2*Y}; const nl1 = Math.hypot(nLocal.x,nLocal.y); if(nl1){ nLocal.x/=nl1; nLocal.y/=nl1; }
+          const nW1 = {x: nLocal.x*cosA - nLocal.y*sinA, y: nLocal.x*sinA + nLocal.y*cosA}; ctx.beginPath(); ctx.moveTo(pTop.x, pTop.y); ctx.lineTo(pTop.x + nW1.x*16, pTop.y + nW1.y*16); ctx.stroke(); }
         ctx.restore();
       }catch(e){ console.warn('hypermirror diag draw failed', e); }
     }}
@@ -1030,31 +1030,26 @@ function drawItem(it){
     if(diagnostics && selected && selected.id === it.id){ ctx.save(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font=(10/view.scale)+'px sans-serif'; ctx.fillText(`opening=${it.aperture}`, 10, -10); ctx.fillText(`total=${it.size}`, 10, 6); ctx.fillText(`offset=${it.apertureOffset || 0}`, 10, 18); ctx.restore(); }
   }
 
-  // hyperbolic mirror — draw visible branches
+  // hyperbolic mirror — draw visible branch (continuous top branch)
   if(it.type === 'hypermirror'){
     try{
       ctx.strokeStyle = '#6b7280'; ctx.lineWidth = 3*scaleFactor;
       const halfLen = Math.abs(it.length)/2;
       const steps = Math.max(16, Math.min(120, Math.round(halfLen/4)));
-      // positive X branch
+      // single continuous branch across visible X range
       ctx.beginPath();
       for(let i=0;i<=steps;i++){
-        const t = i/steps; const X = it.a + halfLen * t; const tmp = (X*X)/(it.a*it.a) - 1; if(tmp < 0) continue; const Y = it.b * Math.sqrt(tmp);
-        if(i===0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
-      }
-      ctx.stroke();
-      // negative X branch
-      ctx.beginPath();
-      for(let i=0;i<=steps;i++){
-        const t = i/steps; const X = -(it.a + halfLen * t); const tmp = (X*X)/(it.a*it.a) - 1; if(tmp < 0) continue; const Y = it.b * Math.sqrt(tmp);
+        const t = i/steps; const X = -halfLen + (2*halfLen)*t; const Y = it.b * Math.sqrt((X*X)/(it.a*it.a) + 1);
         if(i===0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
       }
       ctx.stroke();
       // small end caps
       ctx.fillStyle = '#6b7280';
       const capSize = Math.max(3, 5*scaleFactor);
-      ctx.beginPath(); ctx.arc(it.a + halfLen, it.b * Math.sqrt(Math.max(0, ((it.a+halfLen)*(it.a+halfLen))/(it.a*it.a) - 1)), capSize, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(-(it.a + halfLen), it.b * Math.sqrt(Math.max(0, ((it.a+halfLen)*(it.a+halfLen))/(it.a*it.a) - 1)), capSize, 0, Math.PI*2); ctx.fill();
+      const X1 = -halfLen; const Y1 = it.b * Math.sqrt((X1*X1)/(it.a*it.a) + 1);
+      const X2 = halfLen; const Y2 = it.b * Math.sqrt((X2*X2)/(it.a*it.a) + 1);
+      ctx.beginPath(); ctx.arc(X2, Y2, capSize, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(X1, Y1, capSize, 0, Math.PI*2); ctx.fill();
     }catch(e){ console.warn('draw hypermirror failed', e); }
   }
 
@@ -1150,9 +1145,10 @@ function traceRay(start, dir, depth, out, intensity, diagCollector, baseColor){ 
     const dx = hitPoint.x - nearest.x, dy = hitPoint.y - nearest.y;
     const lx = dx * cosA + dy * sinA;
     const ly = -dx * sinA + dy * cosA;
-    // surface gradient of F = x^2/a^2 - y^2/b^2 - 1 => grad = (2x/a^2, -2y/b^2)
-    const nLocal = { x: 2*lx/(nearest.a*nearest.a), y: -2*ly/(nearest.b*nearest.b) };
-    const nlen = Math.hypot(nLocal.x, nLocal.y); if(nlen === 0){ return; } nLocal.x /= nlen; nLocal.y /= nlen;
+    // surface gradient for drawn hyperbola F = (b^2/a^2)*x^2 - y^2 + b^2 => grad = (2*(b^2/a^2)*x, -2*y)
+    const a2 = nearest.a * nearest.a, b2 = nearest.b * nearest.b;
+    const nLocal = { x: 2*(b2/a2)*lx, y: -2*ly };
+    const nlen = Math.hypot(nLocal.x, nLocal.y); if(nlen === 0) return; nLocal.x /= nlen; nLocal.y /= nlen;
     // rotate normal back to world
     let normal = { x: nLocal.x * cosA - nLocal.y * sinA, y: nLocal.x * sinA + nLocal.y * cosA };
     // ensure normal faces against the incoming ray
@@ -1514,18 +1510,18 @@ function intersectSegmentWithRay(it, origin, dir){
     return null;
   }
   if(it.type==='hypermirror'){
-    // intersect ray with canonical hyperbola in item's local coords
+    // intersect ray with drawn hyperbola y = b * sqrt(x^2/a^2 + 1) in local coords
     const ang = deg2rad(it.angle || 0);
     const cosA = Math.cos(ang), sinA = Math.sin(ang);
     const ox = origin.x - it.x, oy = origin.y - it.y;
     // rotate origin & dir into local frame
     const lx0 = ox * cosA + oy * sinA; const ly0 = -ox * sinA + oy * cosA;
     const ldx = dir.x * cosA + dir.y * sinA; const ldy = -dir.x * sinA + dir.y * cosA;
-    // solve (lx0 + ldx*t)^2 / a^2 - (ly0 + ldy*t)^2 / b^2 = 1  -> quadratic: A t^2 + B t + C = 0
-    const a2 = it.a * it.a, b2 = it.b * it.b;
-    const A = (ldx*ldx)/a2 - (ldy*ldy)/b2;
-    const B = 2*(lx0*ldx)/a2 - 2*(ly0*ldy)/b2;
-    const C = (lx0*lx0)/a2 - (ly0*ly0)/b2 - 1;
+    // we solve k*lx^2 - ly^2 + b^2 = 0 where k = b^2/a^2, substituting lx = lx0 + ldx*t, ly = ly0 + ldy*t -> quadratic At^2 + Bt + C = 0
+    const a2 = it.a * it.a, b2 = it.b * it.b; const k = b2 / a2;
+    const A = k*(ldx*ldx) - (ldy*ldy);
+    const B = 2*(k*lx0*ldx - ly0*ldy);
+    const C = k*(lx0*lx0) - (ly0*ly0) + b2;
     const eps = 1e-9;
     let ts = [];
     if(Math.abs(A) < eps){ // linear
@@ -1534,9 +1530,11 @@ function intersectSegmentWithRay(it, origin, dir){
       const disc = B*B - 4*A*C;
       if(disc >= 0){ const sdisc = Math.sqrt(disc); const t1 = (-B - sdisc)/(2*A); const t2 = (-B + sdisc)/(2*A); ts.push(t1); ts.push(t2); }
     }
-    // find smallest positive t and check local X bounds (finite visible length)
-    let best = null; let bestT = Infinity;
-    for(const t of ts){ if(t <= 1e-6) continue; const X = lx0 + ldx*t; const Y = ly0 + ldy*t; const absX = Math.abs(X); if(absX < it.a - 1e-6) continue; const maxX = it.a + Math.abs(it.length)/2; if(absX > maxX + 1e-6) continue; if(t < bestT){ bestT = t; best = { t, pt: { x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA } } } }
+    // find smallest positive t and check visible X bounds (finite visible length) and top branch (Y >= 0)
+    let best = null; let bestT = Infinity; const halfLen = Math.abs(it.length)/2;
+    for(const t of ts){ if(t <= 1e-6) continue; const X = lx0 + ldx*t; const Y = ly0 + ldy*t; // require top branch so Y >= 0 (drawing shows top branch)
+      if(Y < -1e-6) continue; const absX = Math.abs(X); if(absX > halfLen + 1e-6) continue; // outside visible segment
+      if(t < bestT){ bestT = t; best = { t, pt: { x: it.x + X*cosA - Y*sinA, y: it.y + X*sinA + Y*cosA }, lx: X, ly: Y } } }
     return best;
   }
   if(it.type==='lens'){
