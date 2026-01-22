@@ -169,6 +169,30 @@ function vectorFromAngle(a){ // a in radians
 
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 
+// Rotation pivot helper — default pivot is item origin; hypermirror's visible vertex sits at local (0, b)
+function getRotationPivot(it){
+  if(!it) return {x:0,y:0};
+  if(it.type === 'hypermirror'){
+    const ang = deg2rad(it.angle || 0);
+    const bx = (it.b || 0);
+    return { x: it.x - bx * Math.sin(ang), y: it.y + bx * Math.cos(ang) };
+  }
+  return { x: it.x, y: it.y };
+}
+
+// Rotate an item to newAngle (degrees) while preserving its rotation pivot in world-space
+function rotateItemPreservePivot(it, newAngleDeg){
+  if(!it) return;
+  const oldPivot = getRotationPivot(it);
+  // normalize angle
+  let na = Number(newAngleDeg) % 360; if(na < 0) na += 360;
+  it.angle = na;
+  const newPivot = getRotationPivot(it);
+  // move item so pivot remains at old world location
+  it.x += (oldPivot.x - newPivot.x);
+  it.y += (oldPivot.y - newPivot.y);
+}  
+
 // Base item
 function makeItem(type, x=W/2, y=H/2){
   const base = { id: randId(), type, x, y, angle: 0 };
@@ -458,7 +482,7 @@ function showProperties(item){
 // prop events
 propBeams.oninput = ()=>{ if(!selected) return; selected.beams=+propBeams.value; valBeams.textContent=selected.beams; render(); scheduleSaveState(); }
 if(propShowRays) propShowRays.onchange = ()=>{ if(!selected || (selected.type!=='light' && selected.type!=='plane')) return; selected.showRays = !!propShowRays.checked; saveState('Show/hide light'); render(); }
-propDir.oninput = ()=>{ if(!selected) return; selected.direction=+propDir.value; if(selected.type === 'plane'){ selected.angle = (selected.direction + 90) % 360; } else { selected.angle = selected.direction; } if(typeof propAngleRot !== 'undefined'){ propAngleRot.value = selected.angle; propAngleNum.value = selected.angle; } valDir.textContent=selected.direction+"°"; render(); scheduleSaveState(); }
+propDir.oninput = ()=>{ if(!selected) return; selected.direction=+propDir.value; const newA = (selected.type === 'plane') ? ((selected.direction + 90) % 360) : selected.direction; rotateItemPreservePivot(selected, newA); if(typeof propAngleRot !== 'undefined'){ propAngleRot.value = selected.angle; propAngleNum.value = selected.angle; } valDir.textContent=selected.direction+"°"; render(); scheduleSaveState(); }
 propAngle.oninput = ()=>{ if(!selected) return; selected.spread=+propAngle.value; valAngle.textContent=selected.spread+"°"; render(); scheduleSaveState(); }
 if(propPlaneLength) propPlaneLength.oninput = ()=>{ if(!selected || selected.type!=='plane') return; selected.length = Math.max(4, +propPlaneLength.value); valPlaneLength.textContent = selected.length; scheduleSaveState(); render(); }
 propEven.onchange = ()=>{ if(!selected) return; selected.even = propEven.checked; render(); saveState(); }
@@ -518,7 +542,9 @@ propAperture.oninput = ()=>{ if(!selected || selected.type!=='aperture') return;
 
 // hypermirror property handlers
 if(propHA) propHA.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.a = Math.max(4, +propHA.value); valHA.textContent = selected.a; scheduleSaveState(); render(); }
-if(propHB) propHB.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.b = Math.max(2, +propHB.value); valHB.textContent = selected.b; scheduleSaveState(); render(); }
+if(propHB) propHB.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; const newB = Math.max(2, +propHB.value); const oldB = selected.b || 0; const delta = newB - oldB; // move item so the vertex (at local X=0, Y=b) remains fixed in world coords
+  if(Math.abs(delta) > 1e-9){ const ang = deg2rad(selected.angle || 0); selected.x += delta * Math.sin(ang); selected.y -= delta * Math.cos(ang); }
+  selected.b = newB; valHB.textContent = selected.b; scheduleSaveState(); render(); }
 if(propHLength) propHLength.oninput = ()=>{ if(!selected || selected.type!=='hypermirror') return; selected.length = Math.max(4, +propHLength.value); valHLength.textContent = selected.length; scheduleSaveState(); render(); }
 propApertureTotal.oninput = ()=>{ if(!selected || selected.type!=='aperture') return; selected.size = +propApertureTotal.value; valApertureTotal.textContent = selected.size; // clamp aperture/offset to fit new total
   const halfTotal = (selected.size||120)/2; const halfOpen = (selected.aperture||4)/2; const minOff = -halfTotal + halfOpen; const maxOff = halfTotal - halfOpen; if(typeof selected.apertureOffset === 'undefined') selected.apertureOffset = 0; selected.apertureOffset = Math.max(minOff, Math.min(maxOff, selected.apertureOffset)); if(propApertureOffset){ propApertureOffset.value = selected.apertureOffset; valApertureOffset.textContent = selected.apertureOffset; } scheduleSaveState(); render(); }
@@ -543,8 +569,8 @@ propReflect.oninput = ()=>{ if(!selected) return; selected.reflect=+propReflect.
 propLength2.oninput = ()=>{ if(!selected) return; selected.length=+propLength2.value; valLength2.textContent=selected.length; render(); scheduleSaveState(); }
 
 // rotation handlers
-propAngleRot.oninput = ()=>{ if(!selected) return; selected.angle = +propAngleRot.value; propAngleNum.value = selected.angle; if(selected.type==='light'){ selected.direction = selected.angle; propDir.value = selected.direction; valDir.textContent=selected.direction+"°"; } render(); scheduleSaveState(); }
-propAngleNum.oninput = ()=>{ if(!selected) return; selected.angle = +propAngleNum.value; propAngleRot.value = selected.angle; if(selected.type==='light'){ selected.direction = selected.angle; propDir.value = selected.direction; valDir.textContent=selected.direction+"°"; } render(); scheduleSaveState(); }
+propAngleRot.oninput = ()=>{ if(!selected) return; rotateItemPreservePivot(selected, +propAngleRot.value); propAngleNum.value = selected.angle; if(selected.type==='light'){ selected.direction = selected.angle; propDir.value = selected.direction; valDir.textContent=selected.direction+"°"; } render(); scheduleSaveState(); }
+propAngleNum.oninput = ()=>{ if(!selected) return; rotateItemPreservePivot(selected, +propAngleNum.value); propAngleRot.value = selected.angle; if(selected.type==='light'){ selected.direction = selected.angle; propDir.value = selected.direction; valDir.textContent=selected.direction+"°"; } render(); scheduleSaveState(); }
 
 deleteBtn.onclick = ()=>{ if(!selected) return; const i=scene.items.findIndex(it=>it.id===selected.id); if(i>=0) scene.items.splice(i,1); selected=null; showProperties(null); saveState(); render(); }
 
@@ -556,10 +582,21 @@ canvas.addEventListener('mousedown', e=>{
   // panning with middle (button 1) or spacebar + left click
   if(e.button === 1 || e.buttons === 4 || spaceDown){ panning = true; panStart = {x: e.clientX, y: e.clientY, ox: view.offsetX, oy: view.offsetY}; canvas.style.cursor='grabbing'; return }
   // rotation handle hit test (if selected)
-  if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); // larger hit target for rotation handle
-    if(d < 16){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; // show angle hint for mouse too
+  if(selected){
+    const handleDist = 36;
+    let a = deg2rad(selected.angle||0);
+    if(selected.type === 'aperture') a += Math.PI/2;
+    const center = getRotationPivot(selected);
+    const hx = center.x + Math.cos(a)*handleDist, hy = center.y + Math.sin(a)*handleDist;
+    const d = Math.hypot(pos.x-hx,pos.y-hy); // larger hit target for rotation handle
+    if(d < 16){
+      rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-center.y,pos.x-center.x), startAngle: selected.angle||0, center };
+      rotatingChanged = false;
+      // show angle hint for mouse too
       try{ const screen = worldToScreen(hx, hy); const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.startAngle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; } }catch(e){}
-      return; } }
+      return;
+    }
+  }
 
 
 
@@ -592,20 +629,22 @@ canvas.addEventListener('mousemove', e=>{
     render(); return;
   }
   if(rotating){
-    const angNow = Math.atan2(pos.y-rotating.item.y, pos.x-rotating.item.x);
+    const angNow = Math.atan2(pos.y-rotating.center.y, pos.x-rotating.center.x);
     let delta = (angNow - rotating.startMouseAngle) * 180 / Math.PI;
     // normalize to -180..180
     while(delta > 180) delta -= 360; while(delta < -180) delta += 360;
-    rotating.item.angle = (rotating.startAngle + delta) % 360; if(rotating.item.angle < 0) rotating.item.angle += 360;
-    // snap angles to 15° if enabled
-    if(settings.snapAngles){ rotating.item.angle = Math.round(rotating.item.angle / 15) * 15; }
+    // compute new angle and rotate while preserving pivot
+    let newAngle = (rotating.startAngle + delta) % 360; if(newAngle < 0) newAngle += 360;
+    if(settings.snapAngles){ newAngle = Math.round(newAngle / 15) * 15; }
+    rotateItemPreservePivot(rotating.item, newAngle);
+    // update dependent fields
     if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
     else if(rotating.item.type === 'plane'){ rotating.item.direction = (rotating.item.angle - 90 + 360) % 360; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
     propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle; rotatingChanged = true; render();
     // show angle hint near handle
     try{
       const handleDist = 36; const a = deg2rad(rotating.item.angle||0);
-      const hx = rotating.item.x + Math.cos(a)*handleDist, hy = rotating.item.y + Math.sin(a)*handleDist;
+      const hx = rotating.center.x + Math.cos(a)*handleDist, hy = rotating.center.y + Math.sin(a)*handleDist;
       const screen = worldToScreen(hx, hy);
       const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.angle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; }
     }catch(e){}
@@ -643,7 +682,7 @@ canvas.addEventListener('mousemove', e=>{
 canvas.addEventListener('dblclick', e=>{
   const pos=getMouse(e);
   // rotate on double-click if selected
-  for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos)){ it.angle = (it.angle + 20) % 360; if(it.type==='light'){ it.direction = it.angle; } else if(it.type==='plane'){ it.direction = (it.angle - 90 + 360) % 360; } showProperties(it); render(); saveState(); return }}
+  for(let i=scene.items.length-1;i>=0;i--){ const it=scene.items[i]; if(hitTest(it,pos)){ const newA = (it.angle + 20) % 360; rotateItemPreservePivot(it, newA); if(it.type==='light'){ it.direction = it.angle; } else if(it.type==='plane'){ it.direction = (it.angle - 90 + 360) % 360; } showProperties(it); render(); saveState(); return }}
 });
 
 // Touch interactions: single-touch select/drag/rotate; double-tap rotates; two-finger pinch zoom & pan
@@ -653,9 +692,23 @@ canvas.addEventListener('touchstart', e=>{
   const now = Date.now();
     if(e.touches.length === 1){ const t = e.touches[0]; const pos = getTouchPos(t);
     // rotation handle (larger touch target and show hint)
-    if(selected){ const handleDist = 36; let a = deg2rad(selected.angle||0); if(selected.type === 'aperture') a += Math.PI/2; const hx = selected.x + Math.cos(a)*handleDist, hy = selected.y + Math.sin(a)*handleDist; const d = Math.hypot(pos.x-hx,pos.y-hy); const touchThresh = 28 / (view.scale || 1); if(d < touchThresh){ rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-selected.y,pos.x-selected.x), startAngle: selected.angle||0 }; rotatingChanged = false; touchState = {type:'single', mode:'rotate'}; // show angle hint
+    if(selected){
+      const handleDist = 36;
+      let a = deg2rad(selected.angle||0);
+      if(selected.type === 'aperture') a += Math.PI/2;
+      const center = getRotationPivot(selected);
+      const hx = center.x + Math.cos(a)*handleDist, hy = center.y + Math.sin(a)*handleDist;
+      const d = Math.hypot(pos.x-hx,pos.y-hy);
+      const touchThresh = 28 / (view.scale || 1);
+      if(d < touchThresh){
+        rotating = { item: selected, startMouseAngle: Math.atan2(pos.y-center.y,pos.x-center.x), startAngle: selected.angle||0, center };
+        rotatingChanged = false;
+        touchState = {type:'single', mode:'rotate'};
+        // show angle hint
         try{ const screen = worldToScreen(hx, hy); const hint = document.getElementById('interaction-hint'); if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.startAngle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; } }catch(e){}
-        return; } }
+        return;
+      }
+    }
 
     // item hit tests (reverse order)
     for(let i=scene.items.length-1;i>=0;i--){ const it = scene.items[i]; if(hitTest(it,pos)){ try{ selected = it; dragging = it; dragOffset.x = pos.x - it.x; dragOffset.y = pos.y - it.y; draggingChanged = false; saveState(); try{ showProperties(selected); }catch(e){} render(); }catch(e){} touchState = {type:'single', mode:'drag'}; return; } }
@@ -676,12 +729,12 @@ canvas.addEventListener('touchmove', e=>{
     const pos = getTouchPos(t);
 
     if(touchState.mode === 'rotate' && rotating){
-      const angNow = Math.atan2(pos.y - rotating.item.y, pos.x - rotating.item.x);
+      const angNow = Math.atan2(pos.y - rotating.center.y, pos.x - rotating.center.x);
       let delta = (angNow - rotating.startMouseAngle) * 180 / Math.PI;
       while(delta > 180) delta -= 360; while(delta < -180) delta += 360;
-      rotating.item.angle = (rotating.startAngle + delta) % 360;
-      if(rotating.item.angle < 0) rotating.item.angle += 360;
-      if(settings.snapAngles) rotating.item.angle = Math.round(rotating.item.angle / 15) * 15;
+      let newAngle = (rotating.startAngle + delta) % 360; if(newAngle < 0) newAngle += 360;
+      if(settings.snapAngles) newAngle = Math.round(newAngle / 15) * 15;
+      rotateItemPreservePivot(rotating.item, newAngle);
       if(rotating.item.type === 'light'){ rotating.item.direction = rotating.item.angle; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
       else if(rotating.item.type === 'plane'){ rotating.item.direction = (rotating.item.angle - 90 + 360) % 360; propDir.value = rotating.item.direction; valDir.textContent = rotating.item.direction + '°'; }
       propAngleRot.value = rotating.item.angle; propAngleNum.value = rotating.item.angle;
@@ -689,7 +742,7 @@ canvas.addEventListener('touchmove', e=>{
       try{
         const handleDist = 36;
         const a = deg2rad(rotating.item.angle||0);
-        const hx = rotating.item.x + Math.cos(a)*handleDist, hy = rotating.item.y + Math.sin(a)*handleDist;
+        const hx = rotating.center.x + Math.cos(a)*handleDist, hy = rotating.center.y + Math.sin(a)*handleDist;
         const screen = worldToScreen(hx, hy);
         const hint = document.getElementById('interaction-hint');
         if(hint){ hint.style.display='block'; hint.textContent = Math.round(rotating.item.angle) + '°'; hint.style.left = (screen.x) + 'px'; hint.style.top = (screen.y) + 'px'; }
@@ -835,12 +888,13 @@ function render(){
   }
 
   // selection marker
-  if(selected){ ctx.save(); ctx.strokeStyle='#ff6600'; ctx.lineWidth=2/view.scale; ctx.beginPath(); ctx.arc(selected.x, selected.y, 20,0,Math.PI*2); ctx.stroke();
+  if(selected){ ctx.save(); ctx.strokeStyle='#ff6600'; ctx.lineWidth=2/view.scale; const selCenter = getRotationPivot(selected); ctx.beginPath(); ctx.arc(selCenter.x, selCenter.y, 20,0,Math.PI*2); ctx.stroke();
     // rotation handle (for aperture point towards ray direction)
     const handleDist = 36; let handleAng = deg2rad(selected.angle||0);
     if(selected.type === 'aperture') handleAng += Math.PI/2; // point normal to the line so it indicates ray passage direction
-    const hx = selected.x + Math.cos(handleAng)*handleDist, hy = selected.y + Math.sin(handleAng)*handleDist;
-    ctx.beginPath(); ctx.moveTo(selected.x, selected.y); ctx.lineTo(hx, hy); ctx.stroke();
+    const center = selCenter;
+    const hx = center.x + Math.cos(handleAng)*handleDist, hy = center.y + Math.sin(handleAng)*handleDist;
+    ctx.beginPath(); ctx.moveTo(center.x, center.y); ctx.lineTo(hx, hy); ctx.stroke();
     // larger rotation handle for easier touch grabbing
     ctx.beginPath(); ctx.fillStyle='#ff6600'; ctx.arc(hx, hy, 10, 0, Math.PI*2); ctx.fill();
     // visual arc while rotating: show swept angle sector
@@ -854,12 +908,13 @@ function render(){
         const arcR = 48; // world units
         ctx.save();
         ctx.strokeStyle = 'rgba(255,102,0,0.95)'; ctx.fillStyle = 'rgba(255,102,0,0.12)'; ctx.lineWidth = Math.max(1, 3/view.scale);
-        // draw filled sector
-        ctx.beginPath(); ctx.moveTo(selected.x, selected.y); ctx.arc(selected.x, selected.y, arcR, startRad, endRad, (delta < 0)); ctx.closePath(); ctx.fill();
+        // draw filled sector (around pivot)
+        const pivot = rotating.center || center;
+        ctx.beginPath(); ctx.moveTo(pivot.x, pivot.y); ctx.arc(pivot.x, pivot.y, arcR, startRad, endRad, (delta < 0)); ctx.closePath(); ctx.fill();
         // outline
-        ctx.beginPath(); ctx.arc(selected.x, selected.y, arcR, startRad, endRad, (delta < 0)); ctx.stroke();
+        ctx.beginPath(); ctx.arc(pivot.x, pivot.y, arcR, startRad, endRad, (delta < 0)); ctx.stroke();
         // mid-angle label
-        const midRad = startRad + (endRad - startRad)/2; const tx = selected.x + Math.cos(midRad) * (arcR + 10/view.scale); const ty = selected.y + Math.sin(midRad) * (arcR + 10/view.scale);
+        const midRad = startRad + (endRad - startRad)/2; const tx = pivot.x + Math.cos(midRad) * (arcR + 10/view.scale); const ty = pivot.y + Math.sin(midRad) * (arcR + 10/view.scale);
         ctx.fillStyle = 'rgba(255,102,0,0.95)'; ctx.font = (12/view.scale) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(Math.round(curDeg) + '°', tx, ty);
         ctx.restore();
       }catch(e){ console.warn('draw rotate arc failed', e); }
