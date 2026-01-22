@@ -20,6 +20,7 @@
       <button id="add-lens">+ Lens</button>
       <button id="add-mirror">+ Mirror</button>
       <button id="add-hypermirror">+ Hyperbolic Mirror</button>
+      <button id="add-plane">+ Plane Light</button>
       <button id="add-splitter">+ Beam Splitter</button>
       <button id="add-aperture">+ Aperture</button>
       <hr />
@@ -81,6 +82,10 @@
           <label>Semi-axis b (px): <input id="prop-h-b" type="range" min="4" max="800" value="40" /><span id="val-h-b">40</span></label>
           <label>Visible length (px): <input id="prop-h-length" type="range" min="20" max="2000" value="240" /><span id="val-h-length">240</span></label>
           <p style="font-size:12px;color:#666;margin-top:6px">Help: <strong>a</strong> is the hyperbola semi-major (controls curvature near the vertex); <strong>b</strong> scales the branch opening. The curve uses y = b * sqrt(x^2/a^2 + 1) (single continuous branch). Increase <strong>a</strong> to move the curve's vertex farther from the center; increase <strong>b</strong> to make the branches steeper.</p>
+        </div>
+
+        <div id="plane-props" class="prop-group" style="display:none">
+          <label>Length (px): <input id="prop-plane-length" type="range" min="4" max="1600" value="240" /><span id="val-plane-length">240</span></label>
         </div>
 
         <div id="splitter-props" class="prop-group">

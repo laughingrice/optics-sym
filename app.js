@@ -176,9 +176,11 @@ function makeItem(type, x=W/2, y=H/2){
   if(type==='lens') Object.assign(base,{focal:200, diam:120});
   if(type==='mirror') Object.assign(base,{length:240});
   if(type==='hypermirror') Object.assign(base,{a:80, b:40, length:240});
+  if(type==='plane') Object.assign(base,{length:240, beams:30, direction:0, even:true, color:'#ffd700'});
   if(type==='splitter') Object.assign(base,{length:240, reflect:0.5});
   if(type==='aperture') Object.assign(base,{aperture:80, size:120, apertureOffset:0});
-  if(type==='light') Object.assign(base,{showRays:true});
+  if(type==='light' || type==='plane') Object.assign(base,{showRays:true});
+  if(type==='plane') base.angle = (base.direction || 0) + 90;
   return base;
 }
 
@@ -201,6 +203,7 @@ try{
   addLensBtn.onclick  = ()=>{scene.items.push(makeItem('lens')); saveState(); render();}
   addMirrorBtn.onclick=()=>{scene.items.push(makeItem('mirror')); saveState(); render();}
   addHyperMirrorBtn.onclick=()=>{scene.items.push(makeItem('hypermirror')); saveState(); render();}
+  const addPlaneBtn = document.getElementById('add-plane'); if(addPlaneBtn) addPlaneBtn.onclick = ()=>{ scene.items.push(makeItem('plane')); saveState(); render(); }
   addSplitterBtn.onclick=()=>{scene.items.push(makeItem('splitter')); saveState(); render();}
   const addApertureBtn = document.getElementById('add-aperture'); if(addApertureBtn) addApertureBtn.onclick = ()=>{ scene.items.push(makeItem('aperture')); saveState(); render(); }
   clearSceneBtn.onclick=()=>{scene.items.length=0; selected=null; saveState(); showProperties(null); render();}
@@ -368,6 +371,10 @@ const valHB = document.getElementById('val-h-b');
 const propHLength = document.getElementById('prop-h-length');
 const valHLength = document.getElementById('val-h-length');
 
+// plane props
+const propPlaneLength = document.getElementById('prop-plane-length');
+const valPlaneLength = document.getElementById('val-plane-length');
+
 // per-light visibility checkbox in properties
 const propShowRays = document.getElementById('prop-show-rays');
 
@@ -388,16 +395,20 @@ function showProperties(item){
 
   // show/hide groups
   document.querySelectorAll('.prop-group').forEach(g=>g.style.display='none');
-  if(item.type==='light'){
+  if(item.type==='light' || item.type==='plane'){
     document.getElementById('light-props').style.display='block';
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
-    propAngle.value = item.spread; valAngle.textContent=item.spread+"°";
+    propAngle.value = item.spread || 0; valAngle.textContent=(item.spread||0)+"°";
     propEven.checked = !!item.even;
     // visibility
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     // color
     if(propColor){ propColor.value = item.color || '#ffd700'; valColor.textContent = propColor.value; }
+  }
+  if(item.type === 'plane'){
+    document.getElementById('plane-props').style.display='block';
+    propPlaneLength.value = item.length || 240; valPlaneLength.textContent = propPlaneLength.value;
   }
   if(item.type==='lens'){
     document.getElementById('lens-props').style.display='block';
@@ -436,9 +447,10 @@ function showProperties(item){
 
 // prop events
 propBeams.oninput = ()=>{ if(!selected) return; selected.beams=+propBeams.value; valBeams.textContent=selected.beams; render(); scheduleSaveState(); }
-if(propShowRays) propShowRays.onchange = ()=>{ if(!selected || selected.type!=='light') return; selected.showRays = !!propShowRays.checked; saveState('Show/hide light'); render(); }
-propDir.oninput = ()=>{ if(!selected) return; selected.direction=+propDir.value; selected.angle = selected.direction; if(typeof propAngleRot !== 'undefined'){ propAngleRot.value = selected.angle; propAngleNum.value = selected.angle; } valDir.textContent=selected.direction+"°"; render(); scheduleSaveState(); }
+if(propShowRays) propShowRays.onchange = ()=>{ if(!selected || (selected.type!=='light' && selected.type!=='plane')) return; selected.showRays = !!propShowRays.checked; saveState('Show/hide light'); render(); }
+propDir.oninput = ()=>{ if(!selected) return; selected.direction=+propDir.value; if(selected.type === 'plane'){ selected.angle = (selected.direction + 90) % 360; } else { selected.angle = selected.direction; } if(typeof propAngleRot !== 'undefined'){ propAngleRot.value = selected.angle; propAngleNum.value = selected.angle; } valDir.textContent=selected.direction+"°"; render(); scheduleSaveState(); }
 propAngle.oninput = ()=>{ if(!selected) return; selected.spread=+propAngle.value; valAngle.textContent=selected.spread+"°"; render(); scheduleSaveState(); }
+if(propPlaneLength) propPlaneLength.oninput = ()=>{ if(!selected || selected.type!=='plane') return; selected.length = Math.max(4, +propPlaneLength.value); valPlaneLength.textContent = selected.length; scheduleSaveState(); render(); }
 propEven.onchange = ()=>{ if(!selected) return; selected.even = propEven.checked; render(); saveState(); }
 
 // aperture offset control
@@ -1012,6 +1024,17 @@ function drawItem(it){
   if(it.type==='mirror'){
     ctx.strokeStyle='#6b7280'; ctx.lineWidth=4*scaleFactor; ctx.beginPath(); ctx.moveTo(-it.length/2,0); ctx.lineTo(it.length/2,0); ctx.stroke();
   }
+  if(it.type==='plane'){
+    try{
+      ctx.strokeStyle = it.color || '#ffd700'; ctx.lineWidth = Math.max(3, 4*scaleFactor);
+      const half = Math.abs(it.length)/2;
+      ctx.beginPath(); ctx.moveTo(-half,0); ctx.lineTo(half,0); ctx.stroke();
+      // small arrow indicating direction (drawn along local +X, so compute arrow at center)
+      const arrowLen = Math.max(10, 12*scaleFactor);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(arrowLen,0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(arrowLen,0); ctx.lineTo(arrowLen-6,4); ctx.lineTo(arrowLen-6,-4); ctx.closePath(); ctx.fillStyle = it.color || '#ffd700'; ctx.fill();
+    }catch(e){ console.warn('draw plane failed', e); }
+  }
   if(it.type==='splitter'){
     ctx.strokeStyle='#9a4dff'; ctx.lineWidth=3*scaleFactor; ctx.beginPath(); ctx.moveTo(-it.length/2,0); ctx.lineTo(it.length/2,0); ctx.stroke();
     ctx.fillStyle='#9a4dff22'; ctx.fillRect(-8*scaleFactor,-8*scaleFactor,16*scaleFactor,16*scaleFactor);
@@ -1072,9 +1095,23 @@ function traceAndDrawRays(){
   if(diagnostics) clearDiagnostics();
   // for each light source, generate rays
   const rayLines = [];
-  for(const src of scene.items.filter(i=>i.type==='light' && (i.showRays !== false))){
+  for(const src of scene.items.filter(i=> (i.type==='light' || i.type==='plane') && (i.showRays !== false))){
     const N = Math.max(1, Math.min(500, src.beams || settings.raySamples));
     const angleCenter = deg2rad(src.direction || 0);
+    // plane light: emit parallel rays from a segment centered at src.x,src.y along perpendicular to direction
+    if(src.type === 'plane'){
+      const v = {x: Math.cos(angleCenter), y: Math.sin(angleCenter)}; // propagation dir
+      const n = {x: -v.y, y: v.x}; // segment axis (perpendicular to propagation)
+      const half = Math.abs(src.length || 240)/2;
+      for(let i=0;i<N;i++){
+        const t = (N === 1) ? 0 : (-half + (2*half)*(i/(N-1)));
+        const start = { x: src.x + n.x * t, y: src.y + n.y * t };
+        const dir = { x: v.x, y: v.y };
+        traceRay(start, dir, settings.maxDepth, rayLines, 1, diagnostics ? diagHits : null, src.color || '#ffd700');
+      }
+      continue;
+    }
+    // point light / cone source (existing behavior)
     const spread = deg2rad(src.spread || 0);
     const angles = [];
     if(src.even){
