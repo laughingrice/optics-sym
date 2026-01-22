@@ -151,42 +151,51 @@
     </aside>
   </main>
 
-  <!-- TEMP: iPad error reporter (remove after debugging) -->
   <script>
+    // Content script / extension interference detector: shows a friendly banner if common extension signatures are found
     (function(){
-      function showErrorBanner(msg){
+      function makeBanner(msg){
         try{
-          let b=document.getElementById('debug-error-banner');
+          let b = document.getElementById('extension-warning-banner');
           if(!b){
-            b=document.createElement('div');
-            b.id='debug-error-banner';
-            b.style.position='fixed';
-            b.style.left='12px'; b.style.top='12px'; b.style.right='12px';
-            b.style.zIndex='99999';
-            b.style.background='#ffdddd'; b.style.color='#800';
-            b.style.padding='10px'; b.style.borderRadius='8px';
-            b.style.fontSize='13px'; b.style.boxShadow='0 6px 20px rgba(2,6,23,0.08)';
+            b = document.createElement('div');
+            b.id = 'extension-warning-banner';
+            b.style.position = 'fixed';
+            b.style.left = '12px'; b.style.top = '12px'; b.style.right = '12px';
+            b.style.zIndex = '99999'; b.style.background = '#fff9db'; b.style.color = '#332';
+            b.style.padding = '10px 12px'; b.style.border = '1px solid #f1d18a';
+            b.style.borderRadius = '8px'; b.style.fontSize = '13px'; b.style.boxShadow = '0 6px 20px rgba(2,6,23,0.04)';
+            b.style.display = 'flex'; b.style.gap = '12px'; b.style.alignItems = 'center';
+            const txt = document.createElement('div'); txt.id='extension-warning-text'; txt.style.flex='1'; b.appendChild(txt);
+            const close = document.createElement('button'); close.textContent = 'Dismiss'; close.style.marginLeft='8px'; close.onclick = ()=>{ b.remove(); }; b.appendChild(close);
             document.body.appendChild(b);
           }
-          b.textContent=msg;
-        }catch(e){ console.error('banner failed',e); }
+          const txt = document.getElementById('extension-warning-text'); if(txt) txt.textContent = msg;
+        }catch(e){ console.warn('makeBanner failed', e); }
       }
-      window.addEventListener('error', function(e){
-        const msg = 'Error: '+(e.message||'')+' at '+(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0)+' -- '+(e.error && e.error.stack ? e.error.stack : '');
-        console.error('window.error', e);
-        showErrorBanner(msg);
-      }, true);
-      window.addEventListener('unhandledrejection', function(e){
-        const reason = e.reason && e.reason.stack ? e.reason.stack : (e.reason && e.reason.message ? e.reason.message : JSON.stringify(e.reason));
-        const msg = 'UnhandledRejection: '+ reason;
-        console.error('unhandledrejection', e);
-        showErrorBanner(msg);
-      });
-      window.onerror = function(message, source, lineno, colno, error){
-        const msg='onerror: '+message+' at '+source+':'+lineno+':'+colno;
-        console.error('window.onerror', {message, source, lineno, colno, error});
-        showErrorBanner(msg);
-      };
+
+      function detect(){
+        const keywords = ['adblock','adblockplus','abp','ublock','uBlock','adguard','adsbygoogle','adsense','googlesyndication','ads'];
+        const scripts = Array.from(document.scripts || []);
+        const hits = [];
+        for(const s of scripts){
+          try{
+            const txt = (s.src || '') + ' ' + (s.textContent || '');
+            const lower = txt.toLowerCase();
+            for(const k of keywords){ if(lower.indexOf(k) !== -1){ hits.push({script: s.src || '[inline]', reason: k}); break; } }
+          }catch(e){}
+        }
+        const globals = ['adBlock','adblock','AdBlock','blockadblock','__adblock','abp','uBlock'];
+        for(const g of globals){ try{ if(window[g]) hits.push({global:g}); }catch(e){} }
+        return hits;
+      }
+
+      const results = detect();
+      if(results.length){
+        const reason = results.map(r => r.script ? r.script + ' (' + r.reason + ')' : r.global).slice(0,3).join(', ');
+        makeBanner('It looks like a browser extension may be interfering with the app (e.g. ad blocking). Please try whitelisting this site or disabling extensions for this page. Detected: ' + reason);
+        console.warn('Extension interference detected:', results);
+      }
     })();
   </script>
   <script src="app.js"></script>
