@@ -80,6 +80,6 @@ PWA (Progressive Web App) support:
 - The project now includes `manifest.webmanifest` and a simple service worker `sw.js`.
 - `npm run build` will generate web icons (`icon-192.png` and `icon-512.png`) into `www/icons` (via `npm run generate:icons`) and copy the manifest and `sw.js` into `www/`.
 - The app registers the service worker automatically at page load (when supported) and caches core assets for offline use.
-- To test the PWA locally, run a static server from the `www/` folder: `npx http-server www` or `python -m http.server --directory www 8000`, then inspect the Application tab in DevTools (Service Workers; Manifest). On iOS, use Safari's Add to Home Screen flow.
+- To test the PWA locally, run a static server from the `www/` folder: `npx http-server www -p 8080 -c-1` or `python -m http.server --directory www 8000`, then inspect the Application tab in DevTools (Service Workers; Manifest). The service worker now precaches an offline fallback page (`offline.html`), so the app should load even when offline after initial visit. On iOS, use Safari's Add to Home Screen flow (note iOS has some PWA limitations).
 
 **Notes:** The web assets are served from the `www/` folder and are copied into the iOS project at `ios/App/App/public` by `npx cap copy`.
