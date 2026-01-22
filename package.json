@@ -4,7 +4,7 @@
   "description": "Lightweight, static web app that simulates rays interacting with mirrors, lenses, and beam splitters.",
   "main": "app.js",
   "scripts": {
-    "build": "mkdir -p www && cp -R index.html app.js style.css www/",
+    "build": "npm run generate:icons && mkdir -p www && cp -R index.html app.js style.css manifest.webmanifest sw.js www/ && mkdir -p www/icons && cp -R assets/appicons/icon-192.png assets/appicons/icon-512.png www/icons/",
     "generate:icons": "node tools/generate-icons.js",
     "cap:copy": "npx cap copy",
     "cap:open": "npx cap open ios",

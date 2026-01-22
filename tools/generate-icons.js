@@ -69,6 +69,15 @@ async function ensureDir(d){ if(!fs.existsSync(d)) fs.mkdirSync(d, {recursive:tr
     const contentsPath = path.join(outAppIconSet, 'Contents.json');
     fs.writeFileSync(contentsPath, JSON.stringify(contents, null, 2));
     console.log('Wrote Contents.json to', contentsPath);
+
+    // additionally generate web-friendly icons (192 & 512) for PWA manifest and copy into www/icons
+    try{
+      const webDir = path.join(root, 'www', 'icons');
+      await ensureDir(webDir);
+      const webSizes = [192, 512];
+      for(const s of webSizes){ const filename = `icon-${s}.png`; const outPath = path.join(outAssets, filename); const outWebPath = path.join(webDir, filename); await sharp(svgBuf).resize(s, s, {fit:'cover'}).png({quality:100}).toFile(outPath); await sharp(svgBuf).resize(s,s,{fit:'cover'}).png({quality:100}).toFile(outWebPath); console.log(`Wrote web icon ${outWebPath} (${s}x${s})`); contents.images.push({idiom:'web', size:`${s}x${s}`, scale:'1x', filename}); }
+    }catch(e){ console.warn('web icon generation failed', e); }
+
     console.log('Done. You can now open Xcode and verify AppIcon.appiconset contains the generated PNGs (or drag them into slots).');
   }catch(err){ console.error('generate-icons failed:', err); process.exit(1); }
 })();

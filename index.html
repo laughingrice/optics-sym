@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Optics Sandbox — Serverless Ray Optics</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#0b84ff" />
 </head>
 <body>
   <header>
@@ -163,6 +165,16 @@
         }catch(fe){ if(b) b.textContent = 'Diagnostics attempt failed: ' + (fe && fe.message ? fe.message : String(fe)); }
       }
     }catch(e){ console.error(e); }
+  </script>
+  <script>
+    // PWA: register service worker if available
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', ()=>{
+        navigator.serviceWorker.register('/sw.js').then(reg=>{
+          console.log('ServiceWorker registered:', reg.scope);
+        }).catch(err=>{ console.warn('ServiceWorker registration failed:', err); });
+      });
+    }
   </script>
 </body>
 </html>
