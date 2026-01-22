@@ -19,7 +19,9 @@ main{display:grid;/* left/right column widths are controlled by CSS vars for col
 .collapse-toggle{background:transparent;border:1px solid transparent;padding:6px;border-radius:6px;cursor:pointer}
 .collapse-toggle:hover{background:#f1f5f9}
 /* panel handle shown when collapsed */
-.panel-handle{display:none;position:absolute;left:0;top:50%;transform:translate(-100%,-50%);background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:6px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer}
+.panel-handle{display:none;position:absolute;top:50%;background:#fff;border:1px solid #e6e6e6;border-radius:8px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;z-index:100000;min-width:34px;min-height:34px;display:flex;align-items:center;justify-content:center}
+.panel-handle[data-target="left"]{left:0; transform:translate(-120%,-50%)}
+.panel-handle[data-target="right"]{right:0; transform:translate(120%,-50%)}
 /* collapsed states */
 body.left-collapsed main{--left-min:36px; --left-max:36px}
 body.left-collapsed #palette{padding:6px}
