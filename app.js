@@ -377,6 +377,7 @@ const valPlaneLength = document.getElementById('val-plane-length');
 
 // per-light visibility checkbox in properties
 const propShowRays = document.getElementById('prop-show-rays');
+const pointLightExtra = document.getElementById('point-light-extra');
 
 // Rotation controls (universal)
 const propAngleRot = document.getElementById('prop-angle-rot');
@@ -400,10 +401,9 @@ function showProperties(item){
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
     propAngle.value = item.spread; valAngle.textContent=item.spread+"°";
-    propEven.checked = !!item.even; propAngle.disabled = false; propEven.disabled = false;
-    // ensure angle and even controls are visible for point lights
-    try{ if(propAngle && propAngle.parentElement) propAngle.parentElement.style.display = 'block'; }catch(e){}
-    try{ if(propEven && propEven.parentElement) propEven.parentElement.style.display = 'block'; }catch(e){}
+    propEven.checked = !!item.even;
+    // ensure point-light-only controls are visible
+    if(pointLightExtra) pointLightExtra.style.display = 'block';
     // visibility
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     // color
@@ -413,9 +413,8 @@ function showProperties(item){
     document.getElementById('light-props').style.display='block';
     propBeams.value = item.beams; valBeams.textContent=item.beams;
     propDir.value = (item.direction||0); valDir.textContent = (item.direction||0)+"°";
-    // plane: hide angle spread and even distribution controls (they're meaningless for plane emitters)
-    try{ if(propAngle && propAngle.parentElement) propAngle.parentElement.style.display = 'none'; }catch(e){}
-    try{ if(propEven && propEven.parentElement) propEven.parentElement.style.display = 'none'; }catch(e){}
+    // plane: hide point-light-only controls (angle/even)
+    if(pointLightExtra) pointLightExtra.style.display = 'none';
     if(propShowRays) propShowRays.checked = (item.showRays !== false);
     if(propColor){ propColor.value = item.color || '#ffd700'; valColor.textContent = propColor.value; }
     document.getElementById('plane-props').style.display='block';
