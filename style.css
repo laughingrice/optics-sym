@@ -30,16 +30,18 @@ main{display:grid;/* left/right column widths are controlled by CSS vars for col
 /* collapsed states */
 body.left-collapsed main{--left-min:36px; --left-max:36px}
 body.left-collapsed #palette{padding:6px}
-body.left-collapsed #palette .panel-header h2{display:none}
-body.left-collapsed #palette .panel-controls{display:none}
+/* keep the header and controls visible so users can re-open the panel even when collapsed */
+body.left-collapsed #palette .panel-header h2{display:block}
+body.left-collapsed #palette .panel-controls{display:block}
 body.left-collapsed #palette button{display:none}
 /* show a fixed, prominent handle at the screen edge for reopening */
 body.left-collapsed .panel-handle[data-target="left"]{display:flex;position:fixed;left:8px;top:72px;transform:none;min-width:44px;min-height:44px;border-radius:10px;padding:10px;box-shadow:0 6px 18px rgba(2,6,23,0.12);background:#fff;z-index:100001}
 
 body.right-collapsed main{--right-min:36px; --right-max:36px}
 body.right-collapsed #properties{padding:6px}
-body.right-collapsed #properties .panel-header h2{display:none}
-body.right-collapsed #properties .panel-controls{display:none}
+/* keep the header and controls visible so users can re-open the properties panel even when collapsed */
+body.right-collapsed #properties .panel-header h2{display:block}
+body.right-collapsed #properties .panel-controls{display:block}
 body.right-collapsed #properties .prop-group{display:none}
 body.right-collapsed #properties #props{display:none}
 /* show a fixed, prominent handle at the screen edge for reopening */

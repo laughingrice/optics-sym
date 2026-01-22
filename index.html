@@ -23,6 +23,7 @@
   <main>
     <aside id="palette" class="panel">
       <div class="panel-header"><h2>Components</h2><div class="panel-controls"><button class="collapse-toggle" data-target="left" aria-expanded="true" title="Collapse components">▸</button></div></div>
+      <div class="panel-handle" data-target="left" title="Open components" aria-label="Open components">☰</div>
       <button id="add-light">+ Point Light</button>
       <button id="add-plane">+ Plane Light</button>
       <button id="add-lens">+ Lens</button>
@@ -30,7 +31,6 @@
       <button id="add-hypermirror">+ Hyperbolic Mirror</button>
       <button id="add-splitter">+ Beam Splitter</button>
       <button id="add-aperture">+ Aperture</button>
-      <div class="panel-handle" data-target="left" title="Open components" aria-label="Open components">☰</div>
       <hr />
       <button id="clear-scene">Clear Scene</button>
       <button id="export-png">Export PNG</button>
@@ -50,9 +50,9 @@
 
     <aside id="properties" class="panel">
       <div class="panel-header"><h2>Properties</h2><div class="panel-controls"><button class="collapse-toggle" data-target="right" aria-expanded="true" title="Collapse properties">▸</button></div></div>
+      <div class="panel-handle" data-target="right" title="Open properties" aria-label="Open properties">☰</div>
       <div id="no-selection">No object selected</div>
       <div id="props" style="display:none">
-      <div class="panel-handle" data-target="right" title="Open properties">☰</div>
         <div><strong id="props-type"></strong></div>
 
         <div id="angle-props" class="prop-group">
