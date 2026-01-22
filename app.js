@@ -449,9 +449,9 @@ function showProperties(item){
   const headerH2 = propsAside ? propsAside.querySelector('.panel-header h2') : null;
   const panelControls = propsAside ? propsAside.querySelector('.panel-controls') : null;
   if(!item){
-    // keep header visible when not collapsed so users can still see 'Properties' even with no selection
-    if(headerH2 && !document.body.classList.contains('right-collapsed')) headerH2.style.display = '';
-    if(panelControls && !document.body.classList.contains('right-collapsed')) panelControls.style.display = '';
+    // Always keep header and controls visible so users can find the properties panel even when collapsed and no selection
+    if(headerH2) headerH2.style.display = '';
+    if(panelControls) panelControls.style.display = '';
     propsPanel.style.display='none'; noSel.style.display='block'; return }
   // when an item is present ensure header shows the type and controls remain visible
   if(headerH2) headerH2.style.display = '';
