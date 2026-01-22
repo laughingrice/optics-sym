@@ -1,0 +1,27 @@
+{
+  "name": "optics-sym",
+  "version": "1.1.0",
+  "description": "Lightweight, static web app that simulates rays interacting with mirrors, lenses, and beam splitters.",
+  "main": "app.js",
+  "scripts": {
+    "build": "mkdir -p www && cp -R index.html app.js style.css www/",
+    "generate:icons": "node tools/generate-icons.js",
+    "cap:copy": "npx cap copy",
+    "cap:open": "npx cap open ios",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/ios": "^8.0.1",
+    "@capacitor/share": "^8.0.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  }
+}

@@ -80,7 +80,7 @@
           <label>Semi-axis a (px): <input id="prop-h-a" type="range" min="10" max="1000" value="80" /><span id="val-h-a">80</span></label>
           <label>Semi-axis b (px): <input id="prop-h-b" type="range" min="4" max="800" value="40" /><span id="val-h-b">40</span></label>
           <label>Visible length (px): <input id="prop-h-length" type="range" min="20" max="2000" value="240" /><span id="val-h-length">240</span></label>
-          <p style="font-size:12px;color:#666;margin-top:6px">Help: <strong>a</strong> is the hyperbola semi-major (controls curvature near the vertex); <strong>b</strong> scales the branch opening. Increase <strong>a</strong> to move the curve's vertex farther from the center; increase <strong>b</strong> to make the branches steeper.</p>
+          <p style="font-size:12px;color:#666;margin-top:6px">Help: <strong>a</strong> is the hyperbola semi-major (controls curvature near the vertex); <strong>b</strong> scales the branch opening. The curve uses y = b * sqrt(x^2/a^2 + 1) (single continuous branch). Increase <strong>a</strong> to move the curve's vertex farther from the center; increase <strong>b</strong> to make the branches steeper.</p>
         </div>
 
         <div id="splitter-props" class="prop-group">
@@ -144,8 +144,14 @@
         const b = document.getElementById('app-error'); if(b){ b.style.display='block'; b.textContent='Initialization error: app.js failed to execute (syntax error or blocked) — check console for details.'; }
         // attempt to fetch and parse app.js to surface syntax errors
         try{
-          fetch('app.js').then(r=>r.text()).then(code=>{
-            try{ new Function(code); }catch(err){ const msg = err && err.message ? err.message : String(err); const lines = code.split('\n'); const m = msg.match(/:(\d+):(\d+)/); const lineNo = m ? parseInt(m[1],10) : 1; const start = Math.max(0, lineNo - 5); const end = Math.min(lines.length, lineNo + 5); const extract = lines.slice(start, end).map((l,idx)=>`${start+idx+1}: ${l}`).join('\n'); if(b) b.textContent = 'app.js parse error: ' + msg + '\n\n' + extract; }
+          fetch('app.js').then(r=>r.text()).then(async code=>{
+            try{
+              // first try: syntax parse
+              new Function(code);
+            }catch(err){ const msg = err && err.message ? err.message : String(err); const lines = code.split('\n'); const m = msg.match(/:(\d+):(\d+)/); const lineNo = m ? parseInt(m[1],10) : 1; const start = Math.max(0, lineNo - 5); const end = Math.min(lines.length, lineNo + 5); const extract = lines.slice(start, end).map((l,idx)=>`${start+idx+1}: ${l}`).join('\n'); if(b) b.textContent = 'app.js parse error: ' + msg + '\n\n' + extract;
+              // Try executing for runtime errors (diagnostic only)
+              try{ (new Function(code))(); }catch(runtimeErr){ const m2 = runtimeErr && runtimeErr.stack ? runtimeErr.stack : String(runtimeErr); if(b) b.textContent += '\n\nRuntime error: ' + (runtimeErr && runtimeErr.message ? runtimeErr.message : String(runtimeErr)) + '\n' + m2; }
+            }
           }).catch(fe=>{ if(b) b.textContent = 'Failed to fetch app.js: ' + (fe && fe.message ? fe.message : String(fe)); });
         }catch(fe){ if(b) b.textContent = 'Diagnostics attempt failed: ' + (fe && fe.message ? fe.message : String(fe)); }
       }
