@@ -223,6 +223,45 @@ try{
   const undoBtn = document.getElementById('undo-btn');
   const redoBtn = document.getElementById('redo-btn');
 
+  // Install CTA
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('install-btn');
+  const installModal = document.getElementById('install-modal');
+  const installClose = document.getElementById('install-close');
+  const installInstructions = document.getElementById('install-instructions');
+
+  window.addEventListener('beforeinstallprompt', e=>{
+    e.preventDefault(); deferredInstallPrompt = e; if(installBtn) installBtn.style.display = 'inline-block';
+  });
+
+  if(installBtn){ installBtn.addEventListener('click', async ()=>{
+    try{
+      if(deferredInstallPrompt){ deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; console.log('PWA install choice', choice); deferredInstallPrompt = null; installBtn.style.display='none'; }
+      else{ // show instructions modal
+        showInstallInstructions();
+      }
+    }catch(e){ console.warn('install prompt failed', e); showInstallInstructions(); }
+  }); }
+
+  if(installClose){ installClose.addEventListener('click', ()=>{ if(installModal) installModal.style.display='none'; }); }
+  if(installModal){ installModal.addEventListener('click', (ev)=>{ if(ev.target === installModal) installModal.style.display='none'; }); }
+
+  function showInstallInstructions(){ if(!installModal || !installInstructions) return; const ua = navigator.userAgent || '';
+    let html = '';
+    if(ua.includes('Chrome') || ua.includes('Chromium') || ua.includes('Edg')){
+      html = '<p>Chrome/Edge: Use the browser menu (⋮) -> <strong>Install</strong>, or click the Install button in the address bar.</p>' +
+             '<p>After installing you can add the app to the Dock and run it in a standalone window.</p>';
+    }else if(ua.includes('Safari') && ua.includes('Mac')){
+      html = '<p>Safari (macOS): Safari does not yet expose a native install prompt. For a simple app-like experience, use the macOS <strong>Shortcuts</strong> app:</p>' +
+             '<ol><li>Open Shortcuts → New Shortcut → Add action: <em>Open URL</em>.</li><li>Paste the app URL and save.</li><li>In the shortcut details enable <em>Keep in Dock</em> or Export as an app.</li></ol>';
+    }else{
+      html = '<p>No automatic install available for this browser. You can use Chrome/Edge for a native install, or wrap the site using <strong>Nativefier</strong> (npm package).</p>';
+    }
+    installInstructions.innerHTML = '<div class="install-instructions">' + html + '</div>';
+    installModal.style.display = 'flex';
+  }
+
+
   // panel collapse controls
   const collapseToggles = Array.from(document.querySelectorAll('.collapse-toggle'));
   collapseToggles.forEach(btn=>{
