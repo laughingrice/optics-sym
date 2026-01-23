@@ -82,6 +82,18 @@ PWA (Progressive Web App) support:
 - The app registers the service worker automatically at page load (when supported) and caches core assets for offline use.
 - To test the PWA locally, run a static server from the `www/` folder: `npx http-server www -p 8080 -c-1` or `python -m http.server --directory www 8000`, then inspect the Application tab in DevTools (Service Workers; Manifest). The service worker now precaches an offline fallback page (`offline.html`), so the app should load even when offline after initial visit. On iOS, use Safari's Add to Home Screen flow (note iOS has some PWA limitations).
 
+Install to desktop
+
+- Chrome / Edge (recommended): open the site in Chrome or Edge, then either click the install icon in the address bar or use the browser menu → "Install". The app will be installed to `/Applications` (macOS) and can be added to the Dock.
+
+- Safari (macOS): Safari does not currently show a native install prompt for PWAs. You can create a simple app using the macOS Shortcuts app:
+  1. Open **Shortcuts** → **New Shortcut** → Add action **Open URL** and paste the app URL.
+  2. Save the shortcut. In the shortcut details, enable **Keep in Dock** or Export as an App.
+
+- Advanced: wrap as a native app using Nativefier (Node):
+  - Install: `npm i -g nativefier`
+  - Build: `nativefier --name "Optics Sandbox" 'https://laughingrice.github.io/optics-sym/'`
+
 ### Troubleshooting — extensions & ad blockers
 
 If you see a cryptic "Script error." message or the app fails to run on iOS/desktop, a browser extension (commonly ad blockers such as Adblock Plus, uBlock Origin, or AdGuard) may be injecting a content script that interferes with the app. The site includes a small detector banner that will warn you if common signatures are found.

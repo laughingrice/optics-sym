@@ -16,6 +16,9 @@
 <body>
   <header>
     <h1>Optics Sandbox ⚪️🔭</h1>
+    <div id="install-container" style="margin-left:12px">
+      <button id="install-btn" class="install-btn" title="Install the app" style="display:none">Install</button>
+    </div>
   </header>
   <div id="app-error" style="display:none;position:fixed;left:12px;bottom:12px;padding:12px;border-radius:8px;background:#ffecec;color:#800;z-index:999;max-width:480px;box-shadow:0 6px 20px rgba(2,6,23,0.08);font-size:13px"></div>
   <div id="diag-popup" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:12px;border:1px solid #eee;z-index:1001;max-width:520px;max-height:60vh;overflow:auto;box-shadow:0 10px 40px rgba(2,6,23,0.08);font-size:13px"></div>
@@ -256,5 +259,15 @@
       });
     }
   </script>
+
+  <!-- Install modal (hidden by default) -->
+  <div id="install-modal" class="install-modal" style="display:none">
+    <div class="install-modal-inner">
+      <button id="install-close" class="install-close" title="Close">✕</button>
+      <h3>Install Optics Sandbox</h3>
+      <div id="install-instructions"></div>
+    </div>
+  </div>
+
 </body>
 </html>

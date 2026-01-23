@@ -81,6 +81,14 @@ canvas{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
 canvas{background:#fff;border:1px solid #ddd;border-radius:6px}
 #overlay{position:absolute;left:12px;top:12px}
 #controls{background:rgba(255,255,255,0.95);padding:8px;border-radius:6px;border:1px solid #e6e6e6}
+
+/* Install button and modal */
+.install-btn{background:#0b84ff;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+.install-btn:hover{background:#096ed1}
+.install-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,6,23,0.4);display:flex;align-items:center;justify-content:center;z-index:100003}
+.install-modal-inner{background:#fff;padding:18px;border-radius:10px;max-width:560px;width:92%;box-shadow:0 10px 40px rgba(2,6,23,0.12);position:relative}
+.install-close{position:absolute;right:8px;top:8px;border:none;background:transparent;font-size:16px;cursor:pointer}
+.install-instructions p{margin:8px 0}
 #history-list .hist-item{padding:6px;border-radius:4px;margin-bottom:6px;border:1px solid #eee;background:#fff;cursor:pointer}
 #history-list .hist-item:hover{background:#f7f9fc}
 #history-list .hist-item.active{border-color:#0b84ff;background:#ebf5ff}
